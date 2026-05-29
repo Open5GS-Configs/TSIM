@@ -1,0 +1,3 @@
+config.yaml
+.terraform.lock.hcl
+terraform.tfstate*
