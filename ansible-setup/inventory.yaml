@@ -1,6 +1,6 @@
 all:
   vars:
-    ansible_user: agustin
+    ansible_user: root
   hosts:
     hplmn:
       ansible_host: 155.138.132.127

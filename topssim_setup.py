@@ -10,12 +10,13 @@ import requests
 from providers.InfrastructureManager import InfrastructureManager
 from providers.OpenTofu import OpenTofu
 from providers.Vagrant import Vagrant
+from providers.AnsibleManager import AnsibleManager
 
 
 CLOUD_PROVIDERS = ["vultr"]
 LOCAL_PROVIDERS = ["vb", "vbox", "virtual box", "virtualbox", "vmware", "vm ware"]
 
-COMMON_REQUIRED_PARAMETERS = ["OGS", "H-IP", "V-IP", "USER_SSH_KEY"]
+COMMON_REQUIRED_PARAMETERS = ["OGS_REPO", "H-IP", "V-IP", "USER_SSH_KEY"]
 LOCAL_REQUIRED_PARAMETERS = ["RAM", "DISK", "CPU"]
 CLOUD_REQUIRED_PARAMETERS = ["H-REGION", "V-REGION", "VULTR_API_KEY", "VULTR_PLAN_ID", "VPC-REGION"]
 SEPARATOR = ' '+'='*5+' '
@@ -25,6 +26,7 @@ class setupTOPSSIM():
     def __init__(self):
         self.args = self._parseArgs()
         self._parseConfig(self.args.ConfigFile)
+        self.ansibleManager = AnsibleManager(self.config)
 
 
     def setup(self):
@@ -36,6 +38,9 @@ class setupTOPSSIM():
 
         # now the VMs have been created and the IPs to ssh into the machines are stored within config
         print("\n"+SEPARATOR+f"Start Ansible Configuration"+SEPARATOR+"\n\n")
+
+        # ansible-playbook release.yml --extra-vars "@some_file.yaml"
+        #self.ansibleManager.configure()
 
 
     def getVultrPlans(self, apiKey):
@@ -122,10 +127,22 @@ class setupTOPSSIM():
             if p not in configKeys:
                 self._raiseMissingConfig(p)
 
-        for c in ["HPLMNConfigPath", "VPLMNConfigPath"]:
-            if c not in configKeys:
-                self.config[c] = "default"
+        for c in [["HPLMNConfigPath", "HPLMNConfigRepo"], ["VPLMNConfigPath", "VPLMNConfigRepo"], ["HPLMNHostsPath", "HPLMNHostsRepo"], ["VPLMNHostsPath", "VPLMNHostsRepo"]]:
+            bool configPresent = False
 
+            if c[0] in configKeys:
+                configPresent = True
+            else:
+                self.config[c[0]] = None
+
+            if c[1] in configKeys:
+                configPresent = True
+            else:
+                self.config[c[1]] = None
+            
+            if not configPresent:
+                self._raiseMissingConfig(f"Either {c[0]} or {c[1]} must be present")
+                
 
     def _parseArgs(self):
         parser = argparse.ArgumentParser(description="Open5Gs testing environment \

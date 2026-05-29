@@ -1,14 +1,14 @@
-from subprocess import run
 from json import loads
 
 from .InfrastructureManager import InfrastructureManager
+from .CommandLineManager import CommandLineManager
 
 VARS_PATH = "vultr-opentofu/terraform.tfvars"
 REQ_VARS = ["ANSIBLE_SSH_KEY", "VULTR_API_KEY", "VULTR_PLAN_ID", "H-REGION", "VPC-REGION", "V-REGION", "USER_SSH_KEY"]
 SEPARATOR = ' '+'='*5+' '
 
 
-class OpenTofu(InfrastructureManager):
+class OpenTofu(InfrastructureManager, CommandLineManager):
     def callInfManager(self, config):
         self.populateVars(config)
 
@@ -32,8 +32,6 @@ class OpenTofu(InfrastructureManager):
             print("\n\n OpenTofu completed succesfully!")
             
             
-
-
     def populateVars(self, config):
         print("Populating OpenTofu Vars...")
 
@@ -46,20 +44,4 @@ class OpenTofu(InfrastructureManager):
             f.write('V_HOSTNAME = "VPLMNTEST"\n')
 
         print("Vars created successfully!")
-
-
-    def runCommand(self, command, input=None):
-        if len(command) > 2:
-            commandName = f"{command[0]} {command[2]}"
-        else:
-            commandName = command[0]
-        
-        print("\n"+SEPARATOR+f"Running: {commandName}"+SEPARATOR+"\n\n")
-        res = run(command, input=input)
-
-        if(res.returncode != 0):
-            print(f"Command ({commandName}) presented an error [Status code: {res.returncode}]")
-            return 
-        else:
-            print(f"Command ({commandName}) was succesful")
             

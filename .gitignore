@@ -1,3 +1,4 @@
 config.yaml
 .terraform.lock.hcl
 terraform.tfstate*
+tofu_out.json
