@@ -4,7 +4,7 @@ from .InfrastructureManager import InfrastructureManager
 from .CommandLineManager import CommandLineManager
 
 VARS_PATH = "vultr-opentofu/terraform.tfvars"
-REQ_VARS = ["ANSIBLE_SSH_KEY", "VULTR_API_KEY", "VULTR_PLAN_ID", "H-REGION", "VPC-REGION", "V-REGION", "USER_SSH_KEY"]
+REQ_VARS = ["ansible_ssh_key", "vultr_api_key", "vultr_plan_id", "h_region", "vpc_region", "v_region", "user_ssh_key"]
 SEPARATOR = ' '+'='*5+' '
 
 
@@ -13,7 +13,7 @@ class OpenTofu(InfrastructureManager, CommandLineManager):
         self.populateVars(config)
 
         self.runCommand(["tofu", "-chdir=vultr-opentofu", "init"])
-        self.runCommand(["tofu", "-chdir=vultr-opentofu", "apply", "-show-sensitive", "-json-into=tofu_out.json"])
+        self.runCommand(["tofu", "-chdir=vultr-opentofu", "apply", "-auto-approve", "-show-sensitive", "-json-into=tofu_out.json"])
         
         # self.runCommand(["tofu", "-chdir=vultr-opentofu", "show", "-show-sensitive", "-json-into=tofu-apply.json"])
 
@@ -26,8 +26,8 @@ class OpenTofu(InfrastructureManager, CommandLineManager):
             # only parse last line where outputs are stores
             outJson = loads(outFile.split("\n")[-2])
 
-            config["HPLMN_PUBLIC_IP"] = outJson["outputs"]["hplm_ip"]["value"]
-            config["VPLMN_PUBLIC_IP"] = outJson["outputs"]["vplm_ip"]["value"]
+            config["hplmn_public_ip"] = outJson["outputs"]["hplm_ip"]["value"]
+            config["vplmn_public_ip"] = outJson["outputs"]["vplm_ip"]["value"]
 
             print("\n\n OpenTofu completed succesfully!")
             
@@ -37,9 +37,7 @@ class OpenTofu(InfrastructureManager, CommandLineManager):
 
         with open(VARS_PATH, 'w') as f:
             for var in REQ_VARS:
-                val = config[var]
-                var = var.replace('-', '_')
-                f.write(f'{var} = "{val}"\n')
+                f.write(f'{var} = "{config[var]}"\n')
             f.write('H_HOSTNAME = "HPLMNTEST"\n')
             f.write('V_HOSTNAME = "VPLMNTEST"\n')
 

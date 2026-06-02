@@ -1,0 +1,27 @@
+---
+
+- name: Clone Config Repo
+  ansible.builtin.git: 
+  repo: {{ CONFIG_REPO }}
+  dest: /root/open5gs/install/etc/open5gs
+  when: 
+
+- name: Copy Config Repo
+  ansible.builtin.copy:
+    src: {{CONFIG_PATH}}
+    dest: /root/open5gs/install/etc/open5gs
+    mode: '0644'
+  when:
+
+- name: Clone Hosts Repo
+  ansible.builtin.git: 
+  repo: {{ HOSTS_REPO }}
+  dest: /etc/hosts
+  when: 
+
+- name: Copy file with owner and permissions
+  ansible.builtin.copy:
+    src: {{ HOSTS_PATH }}
+    dest: /etc/hosts
+    mode: '0644'
+  when: 

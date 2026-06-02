@@ -8,9 +8,9 @@ terraform {
 }
 
 provider "vultr" {
-    api_key = var.VULTR_API_KEY
+    api_key = var.vultr_api_key
     rate_limit = 100
     retry_limit = 3
 }
 
-variable "VULTR_API_KEY" {}
+variable "vultr_api_key" {}

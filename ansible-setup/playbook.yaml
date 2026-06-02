@@ -1,18 +1,15 @@
-- name: Set iptabes Policies
+- name: Installation Stage
   hosts: all
-  tasks:
-   - name: Set ACCEPT Policy for INPUT
-      iptables:
-        chain: INPUT
-        policy: ACCEPT
+  roles:
+    - mongodb_repository
+    - mongodb_install
+    - Open5GS Setup
 
-   - name: Set ACCEPT Policy for FORWARD
-      iptables:
-        chain: FORWARD
-        policy: ACCEPT
+  vars:
+    - specific_mongodb_version: 8.0.23
 
-   - name: Set ACCEPT Policy for OUTPUT
-      iptables:
-        chain: OUTPUT
-        policy: ACCEPT
-
+- name: Configuration Stage:
+  hosts: all
+  roles:
+    - Open5GS Config
+    - Netplan Config

@@ -13,24 +13,29 @@ It requires a .yaml config file to store the required parameters for execution. 
 ```
 ---
 
-OGS: "abc"
-USER_SSH_KEY: "your ssh key"
+ogs_repo: "abc"
+hplmn_config_repo: "def"
+vplmn_config_repo: "ghi"
+vplmn_hosts_path: /etc/hosts
+hplmn_hosts_path: /etc/hosts
 
-H-IP: "10.10.0.1"
-V-IP: "10.10.0.2"
+user_ssh_key: "your ssh key"
 
-PROVIDER: "Vultr"
+h_ip: "10.10.0.1"
+v_ip: "10.10.0.2"
 
-H-REGION: "yto"
-V-REGION: "yto"
-VPC-REGION: "yto"
-VULTR_API_KEY: "your api key"
-VULTR_PLAN_ID: "vc2-1c-1gb"
+provider: "Vultr"
+
+h_region: "yto"
+v_region: "yto"
+vpc_region: "yto"
+vultr_api_key: "your api key"
+vultr_plan_id: "vc2-1c-1gb"
 ```
 
 ### Running the program
 You can call it using:
-`python3 topssim_setup.py  /directory/your_config_file.yaml`
+`python3 topssim_setup.py  -c /directory/your_config_file.yaml`
 
 You can check other command-line options with `python3 topssim_setup.py -h`.
 
