@@ -45,29 +45,29 @@ You can check other command-line options with `python3 topssim_setup.py -h`.
 
 It is also useful to know that both OpenTofu and Ansible provide CLI tools. These can be used to isolate a part of the process. Some notable commands are:
 
-1. OpenTofu:
-`tofu show`
-`tofu state list`
-`tofu state show vultr_vpc.sepp-link` (the address of the instances lives in _vultr-opentofu/vultr_resources.tf_)
+1. OpenTofu:   
+`tofu show`    
+`tofu state list`    
+`tofu state show vultr_vpc.sepp-link` (the address of the instances lives in _vultr-opentofu/vultr_resources.tf_)   
 
-2. Ansible:
-`ansible all -m ping ` to test connectivity
-`ansible-playbook topssim_setup.yaml` to run the playbook
-`ansible-inventory --list-hosts` to see the hosts
-`ansible-galaxy role list` to see the installed roles
+2. Ansible:    
+`ansible all -m ping ` to test connectivity    
+`ansible-playbook topssim_setup.yaml` to run the playbook   
+`ansible-inventory --list-hosts` to see the hosts    
+`ansible-galaxy role list` to see the installed roles    
 
 ### Troubleshooting
 
-1. If any issues are present with OpenTofu this is good to keep in mind:
+1. If any issues are present with OpenTofu this is good to keep in mind:     
 
-- If a resource has been deleted manually, OpenTofu will not recognize the change. It must be manually deleted from its instances. 
-This shows the states that are being tracked: `tofu state list`
-If the instance deleted is still there, you can remove it with: `tofu state rm vultr_vpc.sepp-link` (instead of `vultr_vpc.sepp-link` insert your instance's address).
+- If a resource has been deleted manually, OpenTofu will not recognize the change. It must be manually deleted from its instances.     
+This shows the states that are being tracked: `tofu state list`      
+If the instance deleted is still there, you can remove it with: `tofu state rm vultr_vpc.sepp-link` (instead of `vultr_vpc.sepp-link` insert your instance's address).     
 
-2. Ansible:
+2. Ansible:      
 
-- To add a SSH key passphrase to be recognized by Ansible when creating the SSH connection to the hosts:
-Start SSH Agent:
-`eval "$(ssh-agent -s)"`
-And add private key:
-`ssh-add ~/.ssh/id_rsa`
+- To add a SSH key passphrase to be recognized by Ansible when creating the SSH connection to the hosts:    
+Start SSH Agent:     
+`eval "$(ssh-agent -s)"`     
+And add private key:     
+`ssh-add ~/.ssh/id_rsa`     
