@@ -1,28 +1,67 @@
 ---
+# Copy is used here to avoid the error if the folder already exists and is non empty
+- name: Delete hosts temp dir if it exists
+  ansible.builtin.file:
+    path: /tmp/hosts-repo
+    state: absent
 
+- name: Delete config temp dir if it exists
+  ansible.builtin.file:
+    path: /tmp/open5gs
+    state: absent
+
+- name: Create hosts temp dir 
+  ansible.builtin.file:
+    path: /tmp/hosts-repo
+    state: directory
+    mode: '0755'
+
+- name: Create config temp dir 
+  ansible.builtin.file:
+    path: /tmp/open5gs
+    state: directory
+    mode: '0755'
+  
 - name: Copy component configs from path
   ansible.builtin.copy:
     src: "{{ config_path }}"
-    dest: /root/open5gs/install/etc/open5gs
+    dest: /tmp/open5gs
     mode: '0644'
+    force: true
   when: use_config_path 
 
 - name: Clone component configs repo
   ansible.builtin.git: 
     repo: "{{ config_repo }}"
-    dest: /root/open5gs/install/etc/open5gs
+    dest: /tmp/open5gs
   when: not use_config_path
 
-- name: Copy hosts file from path
+- name: Copy configs file
+  ansible.builtin.copy:
+    src: /tmp/open5gs
+    dest: /root/open5gs/install/etc/open5gs
+    remote_src: true
+    force: true
+  become: yes
+
+- name: Copy hosts file from control node
   ansible.builtin.copy:
     src: "{{ hosts_path }}"
-    dest: /etc/hosts
-    remote_src: true
-  become: yes
+    dest: /tmp/hosts-repo/hosts
+    mode: '0644'
+    force: true
   when: use_hosts_path
 
 - name: Clone hosts file from repo
   ansible.builtin.git: 
     repo: "{{ hosts_repo }}"
-    dest: /tmp/hosts-repo
+    dest: /tmp/hosts-repo/hosts
   when: not use_hosts_path 
+
+- name: Copy hosts file
+  ansible.builtin.copy:
+    src: /tmp/hosts-repo/hosts
+    dest: /etc/hosts
+    remote_src: true
+    force: true
+  become: yes

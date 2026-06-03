@@ -10,27 +10,31 @@ This project uses:
 
 ### Config 
 It requires a .yaml config file to store the required parameters for execution. This is a sample of a config file:
+
 ```
 ---
 
-ogs_repo: "abc"
-hplmn_config_repo: "def"
-vplmn_config_repo: "ghi"
-vplmn_hosts_path: /etc/hosts
-hplmn_hosts_path: /etc/hosts
+ogs_repo: "<Open5GS repo>"
+hplmn_config_repo: “<HPLMN Config repo>”
+vplmn_config_repo: “<VPLMN Config repo>”
+vplmn_hosts_path: “<Path to Hosts used in VPLMN>”
+hplmn_hosts_path: “<Path to Hosts used in HPLMN>”
 
-user_ssh_key: "your ssh key"
+user_ssh_key: "<SSH key of the user>"
 
-h_ip: "10.10.0.1"
-v_ip: "10.10.0.2"
+hplmn_ip: "10.10.0.1"
+vplmn_ip: "10.10.0.2"
+vpc_v4_subnet: "10.10.0.0"
+vpc_v4_subnet_mask: "28"
 
 provider: "Vultr"
 
 h_region: "yto"
 v_region: "yto"
 vpc_region: "yto"
-vultr_api_key: "your api key"
+vultr_api_key: "<API Key>"
 vultr_plan_id: "vc2-1c-1gb"
+
 ```
 
 ### Running the program
@@ -38,6 +42,19 @@ You can call it using:
 `python3 topssim_setup.py  -c /directory/your_config_file.yaml`
 
 You can check other command-line options with `python3 topssim_setup.py -h`.
+
+It is also useful to know that both OpenTofu and Ansible provide CLI tools. These can be used to isolate a part of the process. Some notable commands are:
+
+1. OpenTofu:
+`tofu show`
+`tofu state list`
+`tofu state show vultr_vpc.sepp-link` (the address of the instances lives in _vultr-opentofu/vultr_resources.tf_)
+
+2. Ansible:
+`ansible all -m ping ` to test connectivity
+`ansible-playbook topssim_setup.yaml` to run the playbook
+`ansible-inventory --list-hosts` to see the hosts
+`ansible-galaxy role list` to see the installed roles
 
 ### Troubleshooting
 

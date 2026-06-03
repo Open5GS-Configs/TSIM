@@ -1,8 +1,14 @@
+
+---
 all:
   vars:
     ansible_user: root
-  hosts:
-    hplmn:
-      ansible_host: 155.138.145.13
-    vplmn:
-      ansible_host: 149.248.50.186
+  children: 
+    hplmn:  
+      hosts:
+        hplmn_node_1: 
+          ansible_host: 149.248.51.214
+    vplmn:  
+      hosts:
+        vplmn_node_1:
+          ansible_host: 216.128.180.115

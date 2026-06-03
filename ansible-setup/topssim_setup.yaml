@@ -1,7 +1,6 @@
 - name: Wait for SSH
   hosts: all
   gather_facts: false
-
   tasks:
     - name: Wait for SSH to become available
       ansible.builtin.wait_for_connection:

@@ -67,6 +67,11 @@
   ignore_errors: true
   when: apt_result is not defined or apt_result.failed
 
+- name: Delete ogs dir if it exists
+  ansible.builtin.file:
+    path: /root/open5gs
+    state: absent
+
 - name: Clone OGS Repo
   ansible.builtin.git: 
     repo: "{{ ogs_repo }}"
@@ -83,6 +88,24 @@
   ansible.builtin.command: 
     cmd: ninja -C build
     chdir: /root/open5gs
+
+# This writes to a file and reads it so we can display the results from the build
+- name: Start Ninja build
+  ansible.builtin.shell: |
+    ninja -C build > /tmp/ninja.log 2>&1
+  args:
+    chdir: /root/open5gs
+  async: 3600
+  poll: 0
+  register: ninja_job
+
+- name: Show recent build output
+  ansible.builtin.shell: tail -20 /tmp/ninja.log
+  register: ninja_tail
+  changed_when: false
+
+- debug:
+    var: ninja_tail.stdout_lines               
 
 - name: Ninja Install Open5GS
   ansible.builtin.command: 
