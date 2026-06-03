@@ -1,0 +1,41 @@
+---
+# tasks file for MongoDB Install
+
+# sudo apt-get install gnupg curl
+- name: Check & Install gnupg and curl
+  ansible.builtin.apt:
+    name:
+      - gnupg
+      - curl
+    state: present
+    update_cache: yes
+  become: yes
+
+- name: Download MongoDB GPG key
+  ansible.builtin.get_url:
+    url: https://pgp.mongodb.com/server-8.0.asc
+    dest: /etc/apt/keyrings/mongodb-server-8.0.asc
+    mode: "0644"
+  become: yes
+
+
+- name: Add repo using key from URL
+  ansible.builtin.deb822_repository:
+    name: mongodb-org-8.0
+    types: deb
+    uris: "https://repo.mongodb.org/apt/ubuntu"
+    suites: "{{ ansible_facts['distribution_release'] }}/mongodb-org/8.0"
+    components: [multiverse]
+    architectures: [amd64]
+    signed_by: "/etc/apt/keyrings/mongodb-server-8.0.asc"
+    state: present
+  become: yes
+
+
+- name: Install mongodb-org
+  ansible.builtin.apt:
+    name:
+      - mongodb-org
+    state: present
+    update_cache: yes
+  become: yes

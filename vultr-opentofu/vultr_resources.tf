@@ -30,9 +30,13 @@ variable "v_region" {}
 resource "vultr_vpc" "sepp-link" {
 	description = "sepp-link-test"
 	region = var.vpc_region
+  v4_subnet  = var.vpc_v4_subnet
+	v4_subnet_mask = var.vpc_v4_subnet_mask
 }
 
 variable "vpc_region" {}
+variable "vpc_v4_subnet_mask" {}
+variable "vpc_v4_subnet" {}
 
 
 resource "vultr_ssh_key" "user_ssh_key" {

@@ -1,0 +1,5 @@
+private_ip: 10.10.0.1
+use_config_path: false
+config_repo: https://github.com/Open5GS-Configs/HPLMN-Config
+use_hosts_path: true
+hosts_path: /etc/hosts

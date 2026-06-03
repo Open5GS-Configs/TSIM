@@ -4,7 +4,7 @@ from .InfrastructureManager import InfrastructureManager
 from .CommandLineManager import CommandLineManager
 
 VARS_PATH = "vultr-opentofu/terraform.tfvars"
-REQ_VARS = ["ansible_ssh_key", "vultr_api_key", "vultr_plan_id", "h_region", "vpc_region", "v_region", "user_ssh_key"]
+REQ_VARS = ["vpc_v4_subnet_mask", "vpc_v4_subnet", "ansible_ssh_key", "vultr_api_key", "vultr_plan_id", "h_region", "vpc_region", "v_region", "user_ssh_key"]
 SEPARATOR = ' '+'='*5+' '
 
 
@@ -12,8 +12,13 @@ class OpenTofu(InfrastructureManager, CommandLineManager):
     def callInfManager(self, config):
         self.populateVars(config)
 
-        self.runCommand(["tofu", "-chdir=vultr-opentofu", "init"])
-        self.runCommand(["tofu", "-chdir=vultr-opentofu", "apply", "-auto-approve", "-show-sensitive", "-json-into=tofu_out.json"])
+        
+        if self.runCommand(["tofu", "-chdir=vultr-opentofu", "init"]) != 0:
+            raise Exception("Error initiating OpenTofu")
+
+            
+        if self.runCommand(["tofu", "-chdir=vultr-opentofu", "apply", "-auto-approve", "-show-sensitive", "-json-into=tofu_out.json"]) != 0:
+            raise Exception("Error applying OpenTofu plan") 
         
         # self.runCommand(["tofu", "-chdir=vultr-opentofu", "show", "-show-sensitive", "-json-into=tofu-apply.json"])
 

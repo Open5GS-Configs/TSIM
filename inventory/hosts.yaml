@@ -1,8 +1,0 @@
-all:
-  vars:
-    ansible_user: root
-  hosts:
-    hplmn:
-      ansible_host: 155.138.132.127
-    vplmn:
-      ansible_host: 155.138.154.246

@@ -3,14 +3,20 @@ from pathlib import Path
 from .CommandLineManager import CommandLineManager
 
 
-INVENTORY = """all:
+INVENTORY = """
+---
+all:
   vars:
     ansible_user: root
-  hosts:
-    hplmn:
-      ansible_host: HPLMN_PUBLIC_IP
-    vplmn:
-      ansible_host: VPLMN_PUBLIC_IP
+  children: 
+    hplmn:  
+      hosts:
+        hplmn_node_1: 
+          ansible_host: HPLMN_PUBLIC_IP
+    vplmn:  
+      hosts:
+        vplmn_node_1:
+          ansible_host: VPLMN_PUBLIC_IP
 """
 
 class AnsibleManager(CommandLineManager):
@@ -20,41 +26,54 @@ class AnsibleManager(CommandLineManager):
 
 
     def configure(self):
-        with open("ansible-setup/inventory.yaml", "w") as f:
+        print("Writing Inventory!")
+        with open("ansible-setup/inventory/hosts.yaml", "w") as f:
             f.write(self._writeInventory())
-
-        with open("ansible-setup/ansible-vars.yaml", "w") as f:
-            f.write(self._writeVars())
-
-
-    def _writeVars():
-        if(self.runCommand(["git", "ls-remote", self.config["ogs_repo"]]) != 0):
-            self._raiseWrongConfig("ogs_repo")
         
-        with open("roles/Open5GS Setup/vars/main.yml", "w") as f:
-            f.write(f"ogs_repo: {config["ogs_repo"]}")
-            f.write(f"ogs_version: {config["ogs_version"]}")
+        print("Writing Ansible variables!")
+        self._writeVars()
 
-        for c in [["hplmn_config_path", "hplmn_config_repo"], ["vplmn_config_path", "vplmn_config_repo"], ["hplmn_hosts_path", "hplmn_hosts_repo"], ["vplmn_hosts_path", "vplmn_hosts_repo"]]:
-            if self.config[c[0]] != None:
-                # path is present
-            else:
-                if(self.runCommand(["git", "ls-remote", config[c[1]]]) != 0):
-                    self._raiseWrongConfig(c[1])
-        
-                #  repo is present
-                pass
-            
+
+    def setup(self):
+        self.runCommand(["ansible-playbook", "topssim_setup.yaml", "-v"], cwd="ansible-setup")
         
 
-    def _writeInventory():
-        newInv = INVENTORY.replace("HPLMN_PUBLIC_IP", config["HPLMN_PUBLIC_IP"])
-        newInv = INVENTORY.replace("VPLMN_PUBLIC_IP", config["VPLMN_PUBLIC_IP"])
+    def _writeVars(self):
+        if(self.runCommand(["git", "ls-remote", self.config["ogs_repo"]], noOutput=True) != 0):
+            self._raiseWrongconfig("ogs_repo")
+        else:
+            print("Open5GS repo was found!")
+        
+        with open("ansible-setup/roles/Open5GS Setup/vars/main.yml", "w") as f:
+            f.write(f"ogs_repo: {self.config['ogs_repo']}\n")
+            f.write(f"ogs_version: {self.config['ogs_version']}")
+        
+        for plmn in ["hplmn", "vplmn"]:
+            with open(f"ansible-setup/inventory/group_vars/{plmn}.yaml", "w") as f:
+                f.write(f"private_ip: {self.config[plmn + '_ip']}\n")
+                
+                for c in [["_config_path", "_config_repo"], ["_hosts_path", "_hosts_repo"]]:
+                    if self.config[plmn + c[0]] != None:
+                        f.write(f"use_{c[0].split('_')[1]}_path: true\n")
+                        f.write(f"{c[0][1:]}: {self.config[plmn + c[0]]}\n")
+                    else:
+                        if(self.runCommand(["git", "ls-remote", self.config[plmn + c[1]]], noOutput=True) != 0):
+                            self._raiseWrongconfig(plmn + c[1])
+                        else:
+                            print(plmn + c[1] + " was found!")
+                
+                        f.write(f"use_{c[0].split('_')[1]}_path: false\n")
+                        f.write(f"{c[1][1:]}: {self.config[plmn + c[1]]}\n")
+                
+
+    def _writeInventory(self):
+        newInv = INVENTORY.replace("HPLMN_PUBLIC_IP", self.config["hplmn_public_ip"])
+        newInv = newInv.replace("VPLMN_PUBLIC_IP", self.config["vplmn_public_ip"])
 
         return newInv
 
 
-    def _raiseWrongConfig(self, par):
+    def _raiseWrongconfig(self, par):
         errorMsg = f"Required paramater was provided incorrectly: {par}"
         raise Exception(errorMsg)
 

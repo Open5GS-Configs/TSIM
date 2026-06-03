@@ -1,0 +1,6 @@
+---
+# tasks file for Netplan Config
+
+# set static ips for sepp link
+# netplan apply
+# test connection?

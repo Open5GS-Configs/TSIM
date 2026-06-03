@@ -1,24 +1,29 @@
 ---
 
+# Using the command module is not ideal but makes it simpler here
 - name: Create TUN device
-  ansible.builtin.command: ip tuntap add name ogstun mode tuntap
+  ansible.builtin.command: ip tuntap add name ogstun mode tun
   become: yes
+  args:
+    creates: /sys/class/net/ogstun
   
 - name: Add Ipv4 Address to TUN
   ansible.builtin.command: ip addr add 10.45.0.1/16 dev ogstun
   become: yes
+  failed_when: false
+  changed_when: false
   
 - name: Add Ipv6 Address to TUN
   ansible.builtin.command: ip addr add 2001:db8:cafe::1/48 dev ogstun
   become: yes
-  
-- name: Create TUN device
-  ansible.builtin.command: ip tuntap add name ogstun mode tuntap
-  become: yes
+  failed_when: false
+  changed_when: false
   
 - name: Enable ogstun Interface
   ansible.builtin.command: ip link set ogstun up
   become: yes
+  failed_when: false
+  changed_when: false
   
 - name: Install Open5GS Dependencies
   ansible.builtin.apt:
@@ -64,14 +69,14 @@
 
 - name: Clone OGS Repo
   ansible.builtin.git: 
-  repo: {{ ogs_repo }}
-  dest: /root/open5gs
-  single_branch: yes
-  version: {{ ogs_version }}
+    repo: "{{ ogs_repo }}"
+    dest: /root/open5gs
+    single_branch: yes
+    version: "{{ ogs_version }}"
 
 - name: Meson Build Open5GS
   ansible.builtin.command: 
-    cmd: meson build --prefix=`pwd`/install
+    cmd: meson build --prefix=/root/open5gs/install
     chdir: /root/open5gs
 
 - name: Ninja Build Open5GS

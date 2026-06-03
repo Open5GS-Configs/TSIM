@@ -16,10 +16,12 @@ from Managers.AnsibleManager import AnsibleManager
 CLOUD_PROVIDERS = ["vultr"]
 LOCAL_PROVIDERS = ["vb", "vbox", "virtual box", "virtualbox", "vmware", "vm ware"]
 
-COMMON_REQUIRED_PARAMETERS = ["ogs_repo", "h_ip", "v_ip", "user_ssh_key"]
+COMMON_REQUIRED_PARAMETERS = ["ogs_repo", "hplmn_ip", "vplmn_ip", "user_ssh_key"]
 LOCAL_REQUIRED_PARAMETERS = ["ram", "disk", "cpu"]
 CLOUD_REQUIRED_PARAMETERS = ["h_region", "v_region", "vultr_api_key", "vultr_plan_id", "vpc_region"]
+
 SEPARATOR = ' '+'='*5+' '
+DEFAULT_BRANCH = "main"
 
 class setupTOPSSIM():
 
@@ -38,8 +40,9 @@ class setupTOPSSIM():
         parser.add_argument("--ogs_repo", help="The Open5GS repo that is installed to the VMs")
         parser.add_argument("--ogs_version", help="The version (branch) of the Open5GS repo that is cloned")
         parser.add_argument("--user_ssh_key", help="An ssh key automatically added to the authorized keys in the VMs")
-        parser.add_argument("--h_ip", help="The VPC ip of the home network")
-        parser.add_argument("--v_ip", help="The VPC ip of the visited network")
+        parser.add_argument("--hplmn_ip", help="The VPC ip of the home network")
+        parser.add_argument("--vplmn_ip", help="The VPC ip of the visited network")
+        parser.add_argument("--services", help="Creates service files for OGS components in /etc/system/systemd")
         
         # Local Arguments
         parser.add_argument("--ram", help="The RAM used for the VMs (LOCAL ONLY)")
@@ -53,6 +56,8 @@ class setupTOPSSIM():
         parser.add_argument("--vpc_region", help="The region where the virutal private network is created")
         parser.add_argument("--vultr_api_key", help="Personal Vultr API key")
         parser.add_argument("--vultr_plan_id", help="The plan used to create the VMs")
+        parser.add_argument("--vpc_v4_subnet", help="The subnet used to create the VPC betwene the VMs")
+        parser.add_argument("--vpc_v4_subnet_mask:", help="The mask for the VPC subnet")
 
         clArgs, remaining_argv = parser.parse_known_args()
         
@@ -64,6 +69,7 @@ class setupTOPSSIM():
         self.config = vars(parser.parse_args())
         
         self.strategy = None
+        self.ansibleManager = None
         try:
             if not self._checkConfigurationValid():
                 return
@@ -75,7 +81,7 @@ class setupTOPSSIM():
 
 
     def setup(self):
-        if self.strategy == None: return
+        if self.strategy == None or self.ansibleManager == None: return
 
         print("Adding Control Node's SSH key to config\n")
         self._addAnsibleSSHKey(self.config)
@@ -87,7 +93,9 @@ class setupTOPSSIM():
         print("\n"+SEPARATOR+f"Start Ansible Configuration"+SEPARATOR+"\n\n")
 
         # ansible-playbook release.yml --extra-vars "@some_file.yaml"
-        #self.ansibleManager.configure()
+        self.ansibleManager.configure()
+        print("\n"+SEPARATOR+f"Start Ansible Setup in VMs"+SEPARATOR+"\n\n")
+        self.ansibleManager.setup()
 
 
     def getVultrPlans(self, apiKey):
@@ -162,6 +170,12 @@ class setupTOPSSIM():
             for region in [self.config["h_region"], self.config["v_region"]]:
                 if region not in idAvailRegions:
                     self._raiseWrongConfig(region)
+            
+            if "vpc_v4_subnet_mask" not in configKeys:
+                config["vpc_v4_subnet_mask"] = "28"
+                
+            if "vpc_v4_subnet" not in configKeys:
+                config["vpc_v4_subnet"] = "10.10.0.0"
 
             self.strategy = OpenTofu()
 
@@ -198,7 +212,14 @@ class setupTOPSSIM():
                 self._raiseMissingConfig(f"Either {c[0]} or {c[1]} must be present")
         
         if "ogs_version" not in configKeys:
-            config[ogs_version] = "master"
+            self.config["ogs_version"] = DEFAULT_BRANCH
+        elif self.config["ogs_version"] == None:
+            self.config["ogs_version"] = DEFAULT_BRANCH
+
+        if "services" not in configKeys:
+            config["services"] = False
+        
+        return True
 
 
     def _addAnsibleSSHKey(self, config):

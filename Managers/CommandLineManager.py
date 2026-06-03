@@ -6,14 +6,14 @@ SEPARATOR = ' '+'='*5+' '
 
 class CommandLineManager():
 
-    def runCommand(self, command, input=None):
+    def runCommand(self, command, input=None, noOutput=False, cwd=None):
         if len(command) > 2:
             commandName = f"{command[0]} {command[2]}"
         else:
             commandName = command[0]
         
         print("\n"+SEPARATOR+f"Running: {commandName}"+SEPARATOR+"\n\n")
-        res = run(command, input=input)
+        res = run(command, input=input, capture_output=noOutput, text=noOutput, cwd=cwd)
 
         if(res.returncode != 0):
             print(f"Command ({commandName}) presented an error [Status code: {res.returncode}]")

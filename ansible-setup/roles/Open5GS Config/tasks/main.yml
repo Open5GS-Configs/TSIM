@@ -1,27 +1,28 @@
 ---
 
-- name: Clone Config Repo
-  ansible.builtin.git: 
-  repo: {{ CONFIG_REPO }}
-  dest: /root/open5gs/install/etc/open5gs
-  when: 
-
-- name: Copy Config Repo
+- name: Copy component configs from path
   ansible.builtin.copy:
-    src: {{CONFIG_PATH}}
+    src: "{{ config_path }}"
     dest: /root/open5gs/install/etc/open5gs
     mode: '0644'
-  when:
+  when: use_config_path 
 
-- name: Clone Hosts Repo
+- name: Clone component configs repo
   ansible.builtin.git: 
-  repo: {{ HOSTS_REPO }}
-  dest: /etc/hosts
-  when: 
+    repo: "{{ config_repo }}"
+    dest: /root/open5gs/install/etc/open5gs
+  when: not use_config_path
 
-- name: Copy file with owner and permissions
+- name: Copy hosts file from path
   ansible.builtin.copy:
-    src: {{ HOSTS_PATH }}
+    src: "{{ hosts_path }}"
     dest: /etc/hosts
-    mode: '0644'
-  when: 
+    remote_src: true
+  become: yes
+  when: use_hosts_path
+
+- name: Clone hosts file from repo
+  ansible.builtin.git: 
+    repo: "{{ hosts_repo }}"
+    dest: /tmp/hosts-repo
+  when: not use_hosts_path 
