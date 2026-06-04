@@ -8,6 +8,8 @@ This project uses:
   - [Vagrant](https://developer.hashicorp.com/vagrant/install#linux) to create and configure local VMs (provided by VirtualBox and VMWare)
   - [Ansible](https://docs.ansible.com/projects/ansible/latest/installation_guide/intro_installation.html#installing-and-upgrading-ansible-with-pip) to install dependencies, bring Open5GS configurations, and run tests
 
+<img src="/img/diagram.png" width="75%">
+
 ### Config 
 It requires a .yaml config file to store the required parameters for execution. This is a sample of a config file:
 
