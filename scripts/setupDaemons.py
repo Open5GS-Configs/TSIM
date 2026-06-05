@@ -2,8 +2,8 @@
 from os import listdir
 from os.path import isfile, join
 
-DAEMON_CONFIG_DIR = "/root/scripts/multi-user.target.wants"
-SYSTEM_DIR = "/etc/systemd/system"
+DAEMON_CONFIG_DIR = "/root/scripts/system"
+SYSTEM_DIR = "/root/scripts/system"
 
 onlyfiles = [f for f in listdir(DAEMON_CONFIG_DIR) if isfile(join(DAEMON_CONFIG_DIR, f))]
 open5gsFiles = []
@@ -11,6 +11,22 @@ for file in onlyfiles:
     if file.startswith("open5gs-"):
         open5gsFiles.append(file)
 
+for file in open5gsFiles:
+
+    print(f"Reading file: {DAEMON_CONFIG_DIR}/{file}")
+    with open(f"{DAEMON_CONFIG_DIR}/{file}", "r+") as f:
+        text = f.read()
+
+    text = text.replace("/root/open5gs-stable/", "/root/open5gs/")
+
+    print(f"Writing to file: {SYSTEM_DIR}/{file}\n")
+    with open(f"{SYSTEM_DIR}/{file}", "w") as daemonFile:
+        daemonFile.write(text)
+
+
+print("\nAll files have been written correctly!")
+
+'''
 for file in open5gsFiles:
 
     print(f"Reading file: {DAEMON_CONFIG_DIR}/{file}")
@@ -28,3 +44,4 @@ for file in open5gsFiles:
 
 
 print("\nAll files have been written correctly!")
+'''
