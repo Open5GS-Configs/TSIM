@@ -1,0 +1,3 @@
+---
+# defaults file for Create Services
+services: [open5gs-webui, open5gs-hssd, open5gs-upfd, open5gs-smfd, open5gs-seppd, open5gs-udrd, open5gs-ausfd, open5gs-mmed, open5gs-amfd, open5gs-pcrfd, open5gs-pcfd, open5gs-scpd, open5gs-bsfd, open5gs-udmd, open5gs-nrfd, open5gs-sgwcd, open5gs-nssfd, open5gs-sgwud]

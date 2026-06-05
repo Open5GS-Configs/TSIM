@@ -1,3 +1,4 @@
 ---
-vplmn_test_command: "ip a"
+vplmn_test_command: "hostname"
 hplmn_test_command: ":"
+create_services: "True"

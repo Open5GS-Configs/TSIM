@@ -62,7 +62,19 @@
 - name: Copy hosts file
   ansible.builtin.copy:
     src: /tmp/hosts-repo/hosts
-    dest: "{{ dest_hosts_path }}"
+    dest: "/etc/hosts"
     remote_src: true
     force: true
   become: yes
+
+- name: Disable cloud-init hosts management
+  ansible.builtin.lineinfile:
+    path: /etc/cloud/cloud.cfg
+    line: "manage_etc_hosts: false"
+    create: yes
+  when: provider == "vultr"
+
+- name: Run the log path correction script
+  ansible.builtin.script: files/correctLogPath.py
+  args:
+    executable: python3

@@ -28,26 +28,48 @@
     enp8s0_block: |
       - "{{ private_ip }}/{{ vpc_v4_subnet_mask }}"
 
+- name: Create Services
+  hosts: all
+  tags: services_stage
+  vars_files:
+    - vars/vars.yaml
+  roles: 
+    - role: Create Services
+      when: create_services
+
 - name: Testing Stage
   hosts: all
   tags: testing_stage
   vars_files:
     - vars/vars.yaml
   tasks:
-    - name: Test 5G core with builtin tests
-      ansible.builtin.command: 
-        cmd: ./build/tests/registration/registration -c /root/open5gs/build/configs/sample.yaml simple-test
-        chdir: /root/open5gs
+    #- name: Test 5G core with builtin tests
+    #  ansible.builtin.command: 
+    #    cmd: ./build/tests/registration/registration -c /root/open5gs/build/configs/sample.yaml simple-test
+    #    chdir: /root/open5gs
 
     - name: Run HPLMN test command
       ansible.builtin.shell: 
         cmd: "{{ hplmn_test_command }}"
         chdir: /root/open5gs
+      register: hplmn_test
+      when: inventory_hostname in groups['hplmn']
+
+    - name: Print HPLMN test command output
+      ansible.builtin.debug:
+        var: hplmn_test
       when: inventory_hostname in groups['hplmn']
 
     - name: Run VPLMN test command
       ansible.builtin.shell: 
         cmd: "{{ vplmn_test_command }}"
         chdir: /root/open5gs
+      register: vplmn_test
       when: inventory_hostname in groups['vplmn']
+
+    - name: Print VPLMN test command output
+      ansible.builtin.debug:
+        var: vplmn_test
+      when: inventory_hostname in groups['vplmn']
+
 

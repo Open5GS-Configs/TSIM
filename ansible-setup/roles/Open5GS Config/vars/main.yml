@@ -1,1 +1,1 @@
-dest_hosts_path: /etc/cloud/templates/hosts.debian.tmpl
+provider: vultr

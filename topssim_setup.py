@@ -242,7 +242,7 @@ def main():
     parser.add_argument("--hplmn_ip", help="The VPC ip of the home network")
     parser.add_argument("--vplmn_ip", help="The VPC ip of the visited network")
     parser.add_argument("--services", help="Creates service files for OGS components in /etc/system/systemd")
-    parser.add_argument('--ansible_tags', nargs='+', help="Tells ansible which stages to run. Options: install_stage, config_stage, testing_stage")
+    parser.add_argument('--ansible_tags', nargs='+', help="Tells ansible which stages to run. Options: install_stage, config_stage, testing_stage, services_stage, ogstun, ")
 
     # Local Arguments
     parser.add_argument("--ram", help="The RAM used for the VMs (LOCAL ONLY)")

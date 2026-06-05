@@ -36,7 +36,7 @@ class AnsibleManager(CommandLineManager):
 
 
     def setup(self, tags):
-        command = ["ansible-playbook", "topssim_setup.yaml", "-v"]
+        command = ["ansible-playbook", "topssim_setup.yaml"]
         if tags and len(tags) != 0:
             command.append("--tags")
             command.append(tags[0].replace(" ", ", "))
@@ -82,22 +82,28 @@ class AnsibleManager(CommandLineManager):
         with open("ansible-setup/roles/Open5GS Config/vars/main.yml", "w") as f:
             with open("ansible-setup/roles/Netplan Config/vars/main.yml", "w") as g:
                 if self.config["provider"].lower() == "vultr":
-                    self.config["dest_hosts_path"] = "/etc/cloud/templates/hosts.debian.tmpl"
+                    self.config["provider"] = "vultr"
                     self.config["dest_netplan_path"] = "/etc/netplan/50-cloud-init.yaml"
 
                 else:
-                    self.config["dest_hosts_path"] = "/etc/hosts"
+                    # TODO 
+                    # LOCAL PROVIDER
+                    self.config["provider"] = "something else"
                     self.config["dest_netplan_path"] = "/etc/netplan/00-installer-config.yaml"
                 
-                f.write("dest_hosts_path: " + self.config["dest_hosts_path"])
+                f.write("provider: " + self.config["provider"])
                 
                 g.write("dest_netplan_path: "  + f'\"{self.config["dest_netplan_path"]}\"' + "\n")
                 g.write("vpc_v4_subnet_mask: "  + f'\"{self.config["vpc_v4_subnet_mask"]}\"' + "\n")
 
+
+        if "create_services" not in self.config.keys():
+            self.config["create_services"] = "true"
         with open("ansible-setup/vars/vars.yaml", "w") as f:
             f.write("---\n")
             f.write("vplmn_test_command: "  + f'\"{self.config["vplmn_test_command"]}\"' + "\n")
             f.write("hplmn_test_command: "  + f'\"{self.config["hplmn_test_command"]}\"' + "\n")
+            f.write("create_services: "  + f'\"{self.config["create_services"]}\"' + "\n")
 
 
     def _writeInventory(self):
