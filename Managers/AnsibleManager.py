@@ -101,8 +101,8 @@ class AnsibleManager(CommandLineManager):
             self.config["create_services"] = "true"
         with open("ansible-setup/vars/vars.yaml", "w") as f:
             f.write("---\n")
-            f.write("vplmn_test_command: "  + f'\"{self.config["vplmn_test_command"]}\"' + "\n")
-            f.write("hplmn_test_command: "  + f'\"{self.config["hplmn_test_command"]}\"' + "\n")
+            f.write("vplmn_test_command: "  + f'{self.config["vplmn_test_command"]}' + "\n")
+            f.write("hplmn_test_command: "  + f'{self.config["hplmn_test_command"]}' + "\n")
             f.write("create_services: "  + f'\"{self.config["create_services"]}\"' + "\n")
 
 

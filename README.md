@@ -25,11 +25,15 @@ hplmn_config_repo: “<HPLMN Config repo>”
 vplmn_config_repo: “<VPLMN Config repo>”
 vplmn_hosts_path: “<Path to Hosts used in VPLMN>”
 hplmn_hosts_path: “<Path to Hosts used in HPLMN>”
+create_services: true
 
 user_ssh_key: "<SSH key of the user>"
 
-hplmn_ip: "10.10.0.1"
-vplmn_ip: "10.10.0.2"
+hplmn_test_command: ./misc/db/open5gs-dbctl add "999700000021309" "465B5CE8 B199B49F AA5F0A2E E238A6BC" "E8ED289D EBA952E4 283B54E8 8E6183CA"
+vplmn_test_command: ./build/tests/registration/registration -c /root/open5gs/build/configs/examples/gnb-001-01-ue-999-70.yaml simple-test
+
+hplmn_ip: "10.10.0.3"
+vplmn_ip: "10.10.0.4"
 vpc_v4_subnet: "10.10.0.0"
 vpc_v4_subnet_mask: "28"
 
@@ -39,7 +43,7 @@ h_region: "yto"
 v_region: "yto"
 vpc_region: "yto"
 vultr_api_key: "<API Key>"
-vultr_plan_id: "vc2-1c-1gb"
+vultr_plan_id: "vc2-2c-2gb"
 
 ```
 
