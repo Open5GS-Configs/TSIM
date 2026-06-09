@@ -1,5 +1,22 @@
-memory: 4096
-disk: 25
-cpu: 3
-hplmn_ip: 10.10.0.3
-vplmn_ip: 10.10.0.4
+box:
+  - memory: 4096
+  - disk: 25
+  - cpu: 3
+
+hplmn:
+  - private_ip: 10.10.0.3
+  - hostname: "HPLMNTEST"
+  - use_config_path: false
+  - config_repo: https://github.com/Open5GS-Configs/HPLMN-Config
+  - use_hosts_path: true
+  - hosts_path: /home/agustin/hosts/hplmn/hosts
+
+vplmn:
+  - private_ip: 10.10.0.4
+  - hostname: "VPLMNTEST"
+  - use_config_path: false
+  - config_repo: https://github.com/Open5GS-Configs/VPLMN-Config
+  - use_hosts_path: true
+  - hosts_path: /home/agustin/hosts/vplmn/hosts
+
+

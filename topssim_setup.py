@@ -17,9 +17,9 @@ from Managers.AnsibleManager import AnsibleManager
 CLOUD_PROVIDERS = ["vultr"]
 LOCAL_PROVIDERS = ["vb", "vbox", "virtual box", "virtualbox", "vmware", "vm ware"]
 
-COMMON_REQUIRED_PARAMETERS = ["ogs_repo", "hplmn_ip", "vplmn_ip", "user_ssh_key"]
+COMMON_REQUIRED_PARAMETERS = ["ogs", "hplmn", "vplmn", "user_ssh_key", "provider"]
 LOCAL_REQUIRED_PARAMETERS = ["ram", "disk", "cpu"]
-CLOUD_REQUIRED_PARAMETERS = ["h_region", "v_region", "vultr_api_key", "vultr_plan_id", "vpc_region"]
+CLOUD_REQUIRED_PARAMETERS = ["region", "vultr_api_key", "plan_id"]
 
 SEPARATOR = ' '+'='*10+' '
 DEFAULT_BRANCH = "main"
@@ -128,22 +128,24 @@ class setupTOPSSIM():
                     self._raiseMissingConfig(p)
             
             print("Checking Vultr plan availability")
-            availPlans = self.getVultrPlans(self.config['vultr_api_key'])
+            availPlans = self.getVultrPlans(self.config["vultr"]['api_key'])
             idAvailPlans = [plan['id'] for plan in availPlans]
-            if self.config["vultr_plan_id"] not in idAvailPlans:
+            if self.config["vultr"]["plan_id"] not in idAvailPlans:
                 self._raiseWrongConfig("vultr_plan_id")
 
             print("Checking Vultr region availability")
-            availRegions = self.getVultrRegions(self.config['vultr_api_key'])
+            availRegions = self.getVultrRegions(self.config["vultr"]['api_key'])
             idAvailRegions = [region['id'] for region in availRegions]
-            for region in [self.config["h_region"], self.config["v_region"]]:
+            for region in [self.config["hplmn"]["region"], self.config["vplmn"]["region"]]:
                 if region not in idAvailRegions:
                     self._raiseWrongConfig(region)
             
-            if "vpc_v4_subnet_mask" not in configKeys:
+            if "vpc" not in self.config["vultr"].keys():
                 config["vpc_v4_subnet_mask"] = "28"
-                
-            if "vpc_v4_subnet" not in configKeys:
+                config["vpc_v4_subnet"] = "10.10.0.0"
+            elif "v4_subnet_mask" not in self.config["vultr"]["vpc"].keys():
+                config["vpc_v4_subnet_mask"] = "28"                
+            elif "v4_subnet" not in self.config["vultr"]["vpc"].keys():
                 config["vpc_v4_subnet"] = "10.10.0.0"
 
             self.strategy = OpenTofu()
@@ -164,33 +166,35 @@ class setupTOPSSIM():
             if p not in configKeys:
                 self._raiseMissingConfig(p)
 
-        for c in [["hplmn_config_path", "hplmn_config_repo"], ["vplmn_config_path", "vplmn_config_repo"], ["hplmn_hosts_path", "hplmn_hosts_repo"], ["vplmn_hosts_path", "vplmn_hosts_repo"]]:
-            configPresent = False
-
-            if c[0] in configKeys:
-                configPresent = True
-            else:
-                self.config[c[0]] = None
-
-            if c[1] in configKeys:
-                configPresent = True
-            else:
-                self.config[c[1]] = None
-            
-            if not configPresent:
-                self._raiseMissingConfig(f"Either {c[0]} or {c[1]} must be present")
-        
-        if "ogs_version" not in configKeys:
-            self.config["ogs_version"] = DEFAULT_BRANCH
-        elif self.config["ogs_version"] == None:
-            self.config["ogs_version"] = DEFAULT_BRANCH
-
-        if "services" not in configKeys:
-            config["services"] = False
-        
         for plmn in ["hplmn", "vplmn"]:
-            if (plmn + "_test_command") not in configKeys:
-                self.config[plmn + "_test_command"] = ":"
+            plmnKeys = self.config[plmn].keys()
+
+            if ("test_command") not in plmnKeys:
+                self.config[plmn]["test_command"] = ":"
+
+            for c in [["config_path", "config_repo"], ["hosts_path", "hosts_repo"]]:
+                configPresent = False
+
+                if c[0] in plmnKeys:
+                    configPresent = True
+                else:
+                    self.config[plmn][c[0]] = None
+
+                if c[1] in plmnKeys():
+                    configPresent = True
+                else:
+                    self.config[plmn][c[1]] = None
+                
+                if not configPresent:
+                    self._raiseMissingConfig(f"Either {c[0]} or {c[1]} must be present")
+        
+        if "version" not in self.config["ogs"].keys():
+            self.config["ogs"]["version"] = DEFAULT_BRANCH
+        elif self.config["ogs"]["version"] == None:
+            self.config["ogs"]["version"] = DEFAULT_BRANCH
+
+        if "create_services" not in configKeys:
+            config["create_services"] = False
         
         return True
 
