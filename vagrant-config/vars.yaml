@@ -1,0 +1,5 @@
+memory: 4096
+disk: 25
+cpu: 3
+hplmn_ip: 10.10.0.3
+vplmn_ip: 10.10.0.4
