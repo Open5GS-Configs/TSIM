@@ -18,33 +18,35 @@ It requires a .yaml config file to store the required parameters for execution. 
 
 ```
 ---
+ogs:
+  - repo: "<Open5GS repo>"
+  - version: <the git version used when cloning the repo>
 
-ogs_repo: "<Open5GS repo>"
-ogs_version: main
-hplmn_config_repo: “<HPLMN Config repo>”
-vplmn_config_repo: “<VPLMN Config repo>”
-vplmn_hosts_path: “<Path to Hosts used in VPLMN>”
-hplmn_hosts_path: “<Path to Hosts used in HPLMN>”
-create_services: true
+hplmn:
+  - config_repo: <HPLMN Config repo> 
+  - hosts_path: <Path to Hosts used in HPLMN>
+  - test_command: ./misc/db/open5gs-dbctl add "999700000021309" "465B5CE8 B199B49F AA5F0A2E E238A6BC" "E8ED289D EBA952E4 283B54E8 8E6183CA" (for example)
+  - private_ip: "<IP for private network>"
+  - region: "<region for HPLMN>"
 
+
+vplmn:
+  - config_repo: <VPLMN Config repo> 
+  - hosts_path: <Path to Hosts used in VPLMN>
+  - test_command: ./build/tests/registration/registration -c /root/open5gs/build/configs/examples/gnb-001-01-ue-999-70.yaml simple-test (for example)
+  - private_ip: "<IP for private network>"
+  - region: "<region for VPLMN>"
+
+vultr:
+  - vpc:
+    - v4_subnet: "<subnet for private network>"
+    - v4_subnet_mask: "<subnet mask for private network>"
+    - region: "<region for private network>"
+  - plan_id: "<plan used for machines>"
+
+create_services: <(true or false) creates service files in /etc/systemd/system and enables all components to run at boot>
 user_ssh_key: "<SSH key of the user>"
-
-hplmn_test_command: ./misc/db/open5gs-dbctl add "999700000021309" "465B5CE8 B199B49F AA5F0A2E E238A6BC" "E8ED289D EBA952E4 283B54E8 8E6183CA"
-vplmn_test_command: ./build/tests/registration/registration -c /root/open5gs/build/configs/examples/gnb-001-01-ue-999-70.yaml simple-test
-
-hplmn_ip: "10.10.0.3"
-vplmn_ip: "10.10.0.4"
-vpc_v4_subnet: "10.10.0.0"
-vpc_v4_subnet_mask: "28"
-
-provider: "Vultr"
-
-h_region: "yto"
-v_region: "yto"
-vpc_region: "yto"
-vultr_api_key: "<API Key>"
-vultr_plan_id: "vc2-2c-2gb"
-
+provider: "<your VM provider>"
 ```
 
 ### Running the program
