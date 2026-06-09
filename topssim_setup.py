@@ -120,7 +120,8 @@ class setupTOPSSIM():
         if self.config["provider"].lower() in CLOUD_PROVIDERS:
             print("\nCloud provider Recognized!")
 
-            if "vultr_api_key" not in configKeys:
+            self.config["vultr_api_key"] = getenv("VULTR_API_KEY")
+            if  self.config["vultr_api_key"] == None or self.config["vultr_api_key"] == "":
                 self._raiseMissingConfig("vultr_api_key")
 
             for p in CLOUD_REQUIRED_PARAMETERS:

@@ -42,10 +42,13 @@ provider: "Vultr"
 h_region: "yto"
 v_region: "yto"
 vpc_region: "yto"
-vultr_api_key: "<API Key>"
 vultr_plan_id: "vc2-2c-2gb"
 
 ```
+
+The API key for Vultr should be provided as an environment variable with:
+`export VULTR_API_KEY=<your API key>`
+
 
 ### Running the program
 You can call it using:
