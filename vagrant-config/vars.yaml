@@ -2,9 +2,9 @@ box:
     memory: 4096
     disk: 25
     cpu: 2
-    ansible_ssh_key: ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABgQDXIW97jhOE5E6uyFzBrA3gg8OAkJYlWB87ZIL5ex+960S70d7nk7XnkqVXDB24JBpG0Ako9aVwm88IFR0sqvez0mTACRIrGAf/sUHxcO8SM83ps4lPolW+MMauJ85vaYkgTGOcOOgZ6z6yXNDn6/KCFVGhuAM/tFIqcYPoJXHMeKQAn49BFLUJocgZLtQGggkDyQcwn6X0Lw93isGsHEsXiuJv3nSkOOiXIOoAkfmO8EL0fJztLaxGY0Ngr7GR0aO0s3g3y0EO5DSfdbyEgLMNaN44+OZ5Gv8wL6VMY6r1ug1vzUpucsSkBd5uPqsfU7kTUy8Q2y7SxiP18TdeYssy8it6HRYRzOQJ88WbWwq1+rGzS84Iw+G1OnxvRrVxwPZb1odx4fQGFNi1YI3Raypy9yUmc0jifwDxV2dyUzv+C04xKvReE/sgIjNiovWAafyEU7FEjPTGqASjg5pqskoHSXJi244SfKd8uxXddfoYdZeU9e6jv4UCch+Tbu+XiXM= agustin@AnsibleControlNode
+    ansible_tags: 
+    ansible_ssh_key: ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAICfy//mrfB0li+kQoLhKHaE9MUwJTQXURLzj/ctTpj6I aeeguiguren@segrecedt097
     user_ssh_key: ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAILtDJ010ycSBEjoVu8XP2ob/z20TCd5xqsIUpNaielao root@DESKTOP-6QUR9Q3
-
 
 hplmn:
     private_ip: 10.10.0.3

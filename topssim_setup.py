@@ -35,13 +35,13 @@ class setupTOPSSIM():
 
         self.strategy = None
         self.ansibleManager = None
-        try:
-            if not self._checkConfigurationValid():
-                return
-        except AttributeError as e:
-            print(f"Caught an error: {e}")
-            print("Error present in configuration:(")
+       # try:
+        if not self._checkConfigurationValid():
             return
+       # except AttributeError as e:
+       #     print(f"Caught an error: {e}")
+       #     print("Error present in configuration:(")
+       #     return
 
         self.ansibleManager = AnsibleManager(self.config)
 
@@ -55,10 +55,11 @@ class setupTOPSSIM():
         print(SEPARATOR + f"Calling {self.strategy.__class__.__name__}" + SEPARATOR)
         self.strategy.callInfManager()
 
-        # now the VMs have been created and the IPs to ssh into the machines are stored within config
-        print("\n"+SEPARATOR+f"Start Ansible Configuration"+SEPARATOR+"\n\n")
+        if self.config["location"] == "cloud":
+            # now the VMs have been created and the IPs to ssh into the machines are stored within config
+            print("\n"+SEPARATOR+f"Start Ansible Configuration"+SEPARATOR+"\n\n")
 
-        self.callAnsible()
+            self.callAnsible()
 
         print(f'\n\nThe public IPs of the VMs are:\n - HPLMN: {self.config["hplmn_public_ip"]}\n - VPLMN: {self.config["vplmn_public_ip"]}')
 
@@ -79,7 +80,12 @@ class setupTOPSSIM():
     def callAnsible(self, writeInventory=True, tags=None):
         self.ansibleManager.configure(writeInventory)
         print("\n"+SEPARATOR+f"Start Ansible Setup in VMs"+SEPARATOR+"\n\n")
-        self.ansibleManager.setup(tags)
+        
+        if self.config["location"] == "local":
+            # Ansible provisions local VMs through Vagrant
+            self.strategy.provision()
+        elif self.config["location"] == "cloud":    
+            self.ansibleManager.setup(tags)
 
 
     def getVultrPlans(self, apiKey):
@@ -123,6 +129,7 @@ class setupTOPSSIM():
         print(SEPARATOR + "Asserting necessary parameters" + SEPARATOR)
         if self.config["provider"].lower() in CLOUD_PROVIDERS:
             print("\nCloud provider Recognized!")
+            self.config["location"] = "cloud"
 
             for plmn in ["hplmn", "vplmn"]:
                 for p in PLMN_CLOUD_REQUIRED_PARAMETERS:
@@ -162,6 +169,7 @@ class setupTOPSSIM():
 
         elif self.config["provider"].lower() in LOCAL_PROVIDERS:
             print("\nLocal provider Recognized!")
+            self.config["location"] = "local"
 
             for p in LOCAL_REQUIRED_PARAMETERS:
                 if p not in configKeys:
@@ -209,17 +217,21 @@ class setupTOPSSIM():
 
         if "create_services" not in configKeys:
             config["create_services"] = False
-        
+
+        if "ansible_tags" not in configKeys:
+            self.config["ansible_tags"] = ""
+
         return True
 
 
     def _addAnsibleSSHKey(self, config):
-        homeDirectory = Path(getenv("HOME"))
-        publicSSHPath = homeDirectory.joinpath(".ssh/id_rsa.pub")
+        sshConfig = Path(getenv("HOME")).joinpath(".ssh")
+        privateSSHPath = sshConfig.joinpath("id_rsa")
+        publicSSHPath = privateSSHPath.with_suffix(".pub")
 
         if not publicSSHPath.is_file():
             print("SSH Key not found. Generating new key... \n")
-            run(["ssh-keygen", "-t", "ed25519", "-N", "''", "-f", publicSSHPath])
+            run(["ssh-keygen", "-t", "ed25519", "-N", "''", "-f", privateSSHPath])
             print("Created SSH key for Control Node!\n")
         else:
             print("SSH key for Control Node was found\n")

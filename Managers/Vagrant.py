@@ -11,9 +11,9 @@ VARS = """box:
     memory: {{ memory }}
     disk: {{ disk }}
     cpu: {{ cpu }}
+    ansible_tags: {{ ansible_tags }}
     ansible_ssh_key: {{ ansible_ssh_key }}
     user_ssh_key: {{ user_ssh_key }}
-
 
 hplmn:
     private_ip: {{ h_ip }}
@@ -59,13 +59,13 @@ class Vagrant(InfrastructureManager, CommandLineManager):
 
     def callInfManager(self):
         self.populateVars()
-
-        if self.runCommand(["vagrant", "up"], cwd="vagrant-config/") != 0:
+        
+        if self.runCommand(["vagrant", "up", "--machine-readable"], cwd="vagrant-config") != 0:
             raise Exception("Error applying Vagrant plan") 
 
         print("\n\nSuccesfully created HPLMN and VPLMN machines!\n\n")
 
-        print("\n\n OpenTofu completed succesfully!")
+        print("\n\n Vagrant completed succesfully!")
 
 
     def populateVars(self):
@@ -75,6 +75,7 @@ class Vagrant(InfrastructureManager, CommandLineManager):
             memory=self.config["vagrant"]["ram"],
             disk=self.config["vagrant"]["disk"],
             cpu=self.config["vagrant"]["cpu"],
+            ansible_tags=self.config["ansible_tags"],
             ansible_ssh_key=self.config["ansible_ssh_key"],
             user_ssh_key=self.config["user_ssh_key"],
             h_ip=self.config["hplmn"]["private_ip"],
@@ -101,6 +102,11 @@ class Vagrant(InfrastructureManager, CommandLineManager):
         print("Vars created successfully!")
 
 
+    def provision(self):
+        if self.runCommand(["vagrant", "provision"], cwd="vagrant-config") != 0:
+            raise Exception("Error in provisioning with Vagrant")
+
+
     def destroy(self):
-        if self.runCommand(["vagrant", "-chdir=vultr-opentofu", "destroy"]) != 0:
-            raise Exception("Error initiating OpenTofu")
+        if self.runCommand(["vagrant", "destroy"], cwd="vagrant-config") != 0:
+            raise Exception("Error destroying Vagrant VMs")
