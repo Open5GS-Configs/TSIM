@@ -3,50 +3,46 @@
 
 require 'yaml'
 
-vars = YAML.load_file("../vars.yaml")
 
+vars = YAML.load_file("vars.yaml")
 boxes = ["hplmn", "vplmn"]
-N = boxes.size
+
 
 inventory = {}
-(1..N) each do |machine_id|
-# All Vagrant configuration is done below. The "2" in Vagrant.configure
-# configures the configuration version (we support older styles for
-# backwards compatibility). Please don't change it unless you know what
-# you're doing.
 Vagrant.configure("2") do |config|
 
   config.vm.boot_timeout = 600
- #echo "#{vars['ansible']['ssh_key']}" >> /root/.ssh/authorized_keys
-   
 
   config.vm.box = "bento/ubuntu-24.04"
   config.vm.box_version = "202510.26.0"
   
   user_ssh_key = vars["user_ssh_key"]
+  ansible_ssh_key = vars["ansible_ssh_key"]
   config.vm.provision "shell", inline: <<-SHELL
     mkdir -p /root/.ssh
     echo "#{user_ssh_key}" >> /root/.ssh/authorized_keys
+    echo "#{ansible_ssh_key}" >> /root/.ssh/authorized_keys
     chmod 700 /root/.ssh
     chmod 600 /root/.ssh/authorized_keys
   SHELL
 
-  (1..N) each do |machine_id|
+  N = boxes.size
+  (0...N).each do |machine_id|
     config.vm.define "#{boxes[machine_id]}" do |machine|
       machine.vm.hostname = vars[boxes[machine_id]]["hostname"]
       machine.vm.network "private_network",  
         ip:  vars[boxes[machine_id]]["private_ip"],
         virtualbox__intnet: "sepp-link"
 
-      hplmn.vm.disk :disk, size: "#{vars["disk"]}", primary: true 
-      hplmn.vm.provider "virtualbox" do |v|
-        v.memory = vars["memory"]
-        v.cpus = vars["cpu"]
+      machine.vm.disk :disk, size: "#{vars["box"]["disk"]}", primary: true 
+      machine.vm.provider "virtualbox" do |v|
+        v.memory = vars["box"]["memory"]
+        v.cpus = vars["box"]["cpu"]
       end
       
       inventory[boxes[machine_id]] = ["#{boxes[machine_id]}_node"]
       inventory["#{boxes[machine_id]}:vars"] = {"private_ip" => vars[boxes[machine_id]]["private_ip"],
-                       "use_config_path" => vars[boxes[machine_id]["use_config_path"],
+                       "use_config_path" => vars[boxes[machine_id]]["use_config_path"],
                        "use_hosts_path" => vars[boxes[machine_id]]["use_hosts_path"]
                         }
       if inventory["#{boxes[machine_id]}:vars"]["use_config_path"]
@@ -61,13 +57,14 @@ Vagrant.configure("2") do |config|
          inventory["#{boxes[machine_id]}:vars"]["hosts_repo"] = vars[boxes[machine_id]]["hosts_repo"]
       end
 
-      if machine_id == N
-        machine.vm.provision :ansible do |ansible|
-        # Disable default limit to connect to all the machines
-        ansible.limit = "all"
-        ansible.groups = inventory
-        ansible.playbook = "../../ansible-setup/topssim_setup.yaml"
-      end
+      #if machine_id == N
+      #  machine.vm.provision :ansible do |ansible|
+      #    # Disable default limit to connect to all the machines
+      #    ansible.limit = "all"
+      #    ansible.groups = inventory
+      #    ansible.playbook = "../../ansible-setup/topssim_setup.yaml"
+      #  end
+      #end
     end
   end
 end

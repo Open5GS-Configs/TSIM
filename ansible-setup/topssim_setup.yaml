@@ -40,6 +40,8 @@
 - name: Testing Stage
   hosts: all
   tags: testing_stage
+  vars:
+    test_command_timeout: 120
   vars_files:
     - vars/vars.yaml
   tasks:
@@ -54,6 +56,7 @@
         chdir: /root/open5gs
       register: hplmn_test
       when: inventory_hostname in groups['hplmn']
+      timeout: test_command_timeout
 
     - name: Print HPLMN test command output
       ansible.builtin.debug:
@@ -66,6 +69,7 @@
         chdir: /root/open5gs
       register: vplmn_test
       when: inventory_hostname in groups['vplmn']
+      timeout: test_command_timeout
 
     - name: Print VPLMN test command output
       ansible.builtin.debug:
