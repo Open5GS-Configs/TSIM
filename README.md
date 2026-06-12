@@ -49,7 +49,7 @@ user_ssh_key: "<SSH key of the user>"
 provider: "<your VM provider>"
 ```
 
-For **Local** VMs, it is important to note that the ram is meant to be in MB and the disk in GB. 
+For **Local** VMs, it is important to note that the ram is meant to be in MB and the disk in GB. Also, Vagrant automatically forwards localhost ports for ssh connections to the VMs. The default user in the VMs will be called "vagrant" and the default password is also "vagrant".
 
 ### Running the program
 You can call it using:

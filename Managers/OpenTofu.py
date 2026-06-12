@@ -14,10 +14,12 @@ class OpenTofu(InfrastructureManager, CommandLineManager):
     def callInfManager(self):
         self.populateVars()
 
-        if self.runCommand(["tofu", "-chdir=vultr-opentofu", "init"]) != 0:
+        res = self.runCommand(["tofu", "-chdir=vultr-opentofu", "init"]) 
+        if res.returncode != 0:
             raise Exception("Error initiating OpenTofu")
 
-        if self.runCommand(["tofu", "-chdir=vultr-opentofu", "apply", "-auto-approve", "-show-sensitive", "-json-into=tofu_out.json"]) != 0:
+        res = self.runCommand(["tofu", "-chdir=vultr-opentofu", "apply", "-auto-approve", "-show-sensitive", "-json-into=tofu_out.json"]) 
+        if res.returncode != 0:
             raise Exception("Error applying OpenTofu plan") 
         
         # self.runCommand(["tofu", "-chdir=vultr-opentofu", "show", "-show-sensitive", "-json-into=tofu-apply.json"])
@@ -38,7 +40,8 @@ class OpenTofu(InfrastructureManager, CommandLineManager):
 
     
     def destroy(self):
-        if self.runCommand(["tofu", "-chdir=vultr-opentofu", "destroy"]) != 0:
+        res = self.runCommand(["tofu", "-chdir=vultr-opentofu", "destroy"]) 
+        if res.returncode != 0:
             raise Exception("Error initiating OpenTofu")
 
             

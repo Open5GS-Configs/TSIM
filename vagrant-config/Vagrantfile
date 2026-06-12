@@ -28,6 +28,7 @@ Vagrant.configure("2") do |config|
     chmod 600 /home/vagrant/.ssh/authorized_keys
   SHELL
 
+#       
   N = boxes.size
   (0...N).each do |machine_id|
     config.vm.define "#{boxes[machine_id]}" do |machine|
@@ -42,34 +43,37 @@ Vagrant.configure("2") do |config|
         v.cpus = vars["box"]["cpu"]
       end
       
-      inventory[boxes[machine_id]] = ["#{boxes[machine_id]}_node"]
-      inventory["#{boxes[machine_id]}:vars"] = {"private_ip" => vars[boxes[machine_id]]["private_ip"],
-                       "use_config_path" => vars[boxes[machine_id]]["use_config_path"],
-                       "use_hosts_path" => vars[boxes[machine_id]]["use_hosts_path"]
-                        }
-      if inventory["#{boxes[machine_id]}:vars"]["use_config_path"]
-         inventory["#{boxes[machine_id]}:vars"]["config_path"] = vars[boxes[machine_id]]["config_path"]
-      else
-         inventory["#{boxes[machine_id]}:vars"]["config_repo"] = vars[boxes[machine_id]]["config_repo"]
-      end
+      machine.vm.provision "shell",
+        path: "install_python.sh"
 
-      if inventory["#{boxes[machine_id]}:vars"]["use_hosts_path"]
-         inventory["#{boxes[machine_id]}:vars"]["hosts_path"] = vars[boxes[machine_id]]["hosts_path"]
-      else
-         inventory["#{boxes[machine_id]}:vars"]["hosts_repo"] = vars[boxes[machine_id]]["hosts_repo"]
-      end
+#      inventory[boxes[machine_id]] = ["#{boxes[machine_id]}_node"]
+#      inventory["#{boxes[machine_id]}:vars"] = {"private_ip" => vars[boxes[machine_id]]["private_ip"],
+#                       "use_config_path" => vars[boxes[machine_id]]["use_config_path"],
+#                       "use_hosts_path" => vars[boxes[machine_id]]["use_hosts_path"]
+#                        }
+#      if inventory["#{boxes[machine_id]}:vars"]["use_config_path"]
+#         inventory["#{boxes[machine_id]}:vars"]["config_path"] = vars[boxes[machine_id]]["config_path"]
+#      else
+#         inventory["#{boxes[machine_id]}:vars"]["config_repo"] = vars[boxes[machine_id]]["config_repo"]
+#      end
+#
+#      if inventory["#{boxes[machine_id]}:vars"]["use_hosts_path"]
+#         inventory["#{boxes[machine_id]}:vars"]["hosts_path"] = vars[boxes[machine_id]]["hosts_path"]
+#      else
+#         inventory["#{boxes[machine_id]}:vars"]["hosts_repo"] = vars[boxes[machine_id]]["hosts_repo"]
+#      end
 
  
-      if machine_id == N-1
-        machine.vm.provision :ansible do |ansible|
-          puts "\n"+SEPARATOR+"Start Ansible Configuration"+SEPARATOR+"\n\n"
-          # Disable default limit to connect to all the machines
-          ansible.limit = "all"
-          ansible.groups = inventory
-          ansible.playbook = "../ansible-setup/topssim_setup.yaml"
-          ansible.tags = vars["ansible_tags"]
-        end
-      end
+#     if machine_id == N-1
+#        machine.vm.provision :ansible do |ansible|
+#          puts "\n"+SEPARATOR+"Start Ansible Configuration"+SEPARATOR+"\n\n"
+#          # Disable default limit to connect to all the machines
+#          ansible.limit = "all"
+#          ansible.groups = inventory
+#          ansible.playbook = "../ansible-setup/topssim_setup.yaml"
+#          ansible.tags = vars["ansible_tags"]
+#        end
+#      end
     end
   end
 end

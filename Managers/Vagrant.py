@@ -60,10 +60,16 @@ class Vagrant(InfrastructureManager, CommandLineManager):
     def callInfManager(self):
         self.populateVars()
         
-        if self.runCommand(["vagrant", "up", "--machine-readable"], cwd="vagrant-config") != 0:
+        if self.runCommand(["vagrant", "up"], cwd="vagrant-config").returncode != 0:
             raise Exception("Error applying Vagrant plan") 
 
         print("\n\nSuccesfully created HPLMN and VPLMN machines!\n\n")
+        
+        res = self.runCommand(["vagrant", "ssh-config", "--machine-readable"], noOutput=True, cwd="vagrant-config")
+        if res.returncode != 0:
+            raise Exception("Error collecting VM IPs")
+        
+        self.extractIPs(res)
 
         print("\n\n Vagrant completed succesfully!")
 
@@ -103,10 +109,34 @@ class Vagrant(InfrastructureManager, CommandLineManager):
 
 
     def provision(self):
-        if self.runCommand(["vagrant", "provision"], cwd="vagrant-config") != 0:
-            raise Exception("Error in provisioning with Vagrant")
+        res = self.runCommand(["vagrant", "provision"], cwd="vagrant-config") 
+        if res.returncode != 0:
+            raise Exception("Error in provisioning with Vagrant: " + res.stderr)
 
 
     def destroy(self):
-        if self.runCommand(["vagrant", "destroy"], cwd="vagrant-config") != 0:
-            raise Exception("Error destroying Vagrant VMs")
+        res = self.runCommand(["vagrant", "destroy"], cwd="vagrant-config") 
+        if res.returncode != 0:
+            raise Exception("Error destroying Vagrant VMs: " + res.stderr)
+
+
+    def extractIPs(self, res):
+        plmn = ""
+        ip = ""
+        port = ""
+
+        for t in res.stdout.split("\n"):
+            data = t.split(",")
+            if "ssh-config" in data:
+                for c in data[3].split("\\n"):
+                    sshConfig = c.split()
+                    if "Host" in sshConfig:
+                        plmn = sshConfig[1]
+                    if "HostName" in sshConfig:
+                        ip = sshConfig[1]
+                    if "Port" in sshConfig:
+                        port = sshConfig[1]
+                self.config[plmn]["public_ip"] = ip
+                self.config[plmn]["port"] = port
+                print(f"SSH Config: {plmn} {ip} {port}")
+
