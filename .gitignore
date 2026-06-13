@@ -227,5 +227,5 @@ vultr-opentofu/tofu_out.json
 vultr-opentofu/terraform.tfvars
 vultr-opentofu/.terraform/providers/registry.opentofu.org/vultr/vultr/2.23.1/linux_amd64/terraform-provider-vultr_v2.23.1
 vultr-opentofu/.terraform/providers/registry.opentofu.org/vultr/vultr/2.23.1/linux_amd64.lock
-config vultr.yaml
+config_vultr.yaml
 vagrant-config/.vagrant

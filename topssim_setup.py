@@ -17,10 +17,10 @@ from Managers.AnsibleManager import AnsibleManager
 CLOUD_PROVIDERS = ["vultr"]
 LOCAL_PROVIDERS = ["vb", "vbox", "virtual box", "virtualbox", "vmware", "vm ware"]
 
-COMMON_REQUIRED_PARAMETERS = ["ogs", "hplmn", "vplmn", "user_ssh_key", "provider"]
+COMMON_REQUIRED_PARAMETERS = ["ogs", "hplmn", "vplmn", "provider"]
 LOCAL_REQUIRED_PARAMETERS = ["vagrant"]
 VAGRANT_REQUIRED_PARAMETERS = ["ram", "disk", "cpu"]
-PLMN_CLOUD_REQUIRED_PARAMETERS = ["region"]
+PLMN_CLOUD_REQUIRED_PARAMETERS = ["region", "test_script"]
 VULTR_CLOUD_REQUIRED_PARAMETERS = ["plan_id"]
 VPC_CLOUD_REQUIRED_PARAMETERS = ["region"]
 
@@ -183,9 +183,6 @@ class setupTOPSSIM():
         for plmn in ["hplmn", "vplmn"]:
             plmnKeys = self.config[plmn].keys()
 
-            if ("test_command") not in plmnKeys:
-                self.config[plmn]["test_command"] = ":"
-
             for c in [["config_path", "config_repo"], ["hosts_path", "hosts_repo"]]:
                 configPresent = False
 
@@ -209,6 +206,9 @@ class setupTOPSSIM():
 
         if "create_services" not in configKeys:
             config["create_services"] = False
+
+        if "user_ssh_key" not in configKeys:
+            config["user_ssh_key"] = ""
         
         return True
 
@@ -275,6 +275,8 @@ def main():
     parser.add_argument("--user_ssh_key", help="An ssh key automatically added to the authorized keys in the VMs")
     parser.add_argument("--hplmn_ip", help="The VPC ip of the home network")
     parser.add_argument("--vplmn_ip", help="The VPC ip of the visited network")
+    parser.add_argument("--h_test", help="The path of the test script to be executed in the HPLMN")
+    parser.add_argument("--v_test", help="The path of the test script to be executed in the VPLMN")
     parser.add_argument("--create_services", action='store_true', help="Creates service files for OGS components in /etc/system/systemd")
     parser.add_argument('--ansible_tags', nargs='+', help="Tells ansible which stages to run. Options: install_stage, config_stage, testing_stage, services_stage, ogstun, install_ogs")
 
@@ -282,7 +284,6 @@ def main():
     parser.add_argument("--ram", help="The RAM used for the VMs (LOCAL ONLY)")
     parser.add_argument("--disk", help="The disk size allocated to the VMs (LOCAL ONLY)")
     parser.add_argument("--cpu", help="The amount of CPU allocated to the VMs (LOCAL ONLY)")
-
 
     # Vultr Arguments
     parser.add_argument("--h_region", help="The region where the home VM is created")
@@ -354,6 +355,8 @@ def apply_cli_overrides(config, args):
         "ogs_version": ("ogs", "version"),
         "hplmn_ip": ("hplmn", "private_ip"),
         "vplmn_ip": ("vplmn", "private_ip"),
+        "h_test": ("hplmn", "test_script"),
+        "v_test": ("vplmn", "test_script"),
         "h_region": ("hplmn", "region"),
         "v_region": ("vplmn", "region"),
         "vultr_plan_id": ("vultr", "plan_id"),
@@ -362,9 +365,9 @@ def apply_cli_overrides(config, args):
         "vpc_v4_subnet_mask": ("vultr", "vpc", "v4_subnet_mask"),
         "vpc_region": ("vultr", "vpc", "region"),
         "ansible_tags": ("ansible_tags",),
-        "ram": ("Vagrant", "ram",),
-        "disk": ("Vagrant", "disk",), 
-        "cpu": ("Vagrant", "cpu",), 
+        "ram": ("vagrant", "ram",),
+        "disk": ("vagrant", "disk",), 
+        "cpu": ("vagrant", "cpu",), 
     }
 
     for arg_name, path in overrides.items():
