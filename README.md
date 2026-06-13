@@ -54,6 +54,8 @@ user_ssh_key: "<SSH key of the user>"
 provider: "<your VM provider>"
 ```
 
+For **Local** VMs, it is important to note that the ram is meant to be in MB and the disk in GB. 
+
 ### Running the program
 You can call it using:
 `python3 topssim_setup.py  -c /directory/your_config_file.yaml`
@@ -64,7 +66,7 @@ Some examples are:
 To run just the configuration and testing stages of Ansible on already existing machines:
 `python3 topssim_setup.py -c /home/agustin/5G_Setup/config.yaml -ansible --ansible_tags "config_stage testing_stage"`
 
-It is also useful to know that both OpenTofu and Ansible provide CLI tools. These can be used to isolate a part of the process. Some notable commands are:
+It is also useful to know that OpenTofu, Vagrant, and Ansible provide CLI tools. These can be used to isolate a part of the process. Some notable commands are:
 
 1. Ansible:    
 `ansible all -m ping ` to test connectivity    
@@ -77,7 +79,10 @@ It is also useful to know that both OpenTofu and Ansible provide CLI tools. Thes
 `tofu state list`    
 `tofu state show vultr_vpc.sepp-link` (the address of the instances lives in _vultr-opentofu/vultr_resources.tf_)   
 
-  
+3. Vagrant:
+`vagrant up`
+`vagrant ssh-config`
+`vagramt destroy`
 
 ### Troubleshooting
 

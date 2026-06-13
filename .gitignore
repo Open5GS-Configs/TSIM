@@ -229,3 +229,5 @@ vultr-opentofu/.terraform/providers/registry.opentofu.org/vultr/vultr/2.23.1/lin
 vultr-opentofu/.terraform/providers/registry.opentofu.org/vultr/vultr/2.23.1/linux_amd64.lock
 config_vultr.yaml
 vagrant-config/.vagrant
+config vultr.yaml
+.vagrant
