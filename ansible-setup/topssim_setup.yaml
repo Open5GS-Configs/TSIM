@@ -58,12 +58,19 @@
       ansible.builtin.debug:
         var: hplmn_test
       when: inventory_hostname in groups['hplmn']
-    
+
+    - copy:
+        src: "{{ vplmn_test_script }}"
+        dest: /tmp/vplmn_test.sh
+        mode: '0755'
+
     - name: Run VPLMN test script
-      ansible.builtin.script: "{{ vplmn_test_script }}"
-      register: hplmn_test
+      ansible.builtin.shell:
+        cmd: /tmp/vplmn_test.sh
+      async: "{{ test_command_timeout }}"
+      poll: 5
+      register: vplmn_test
       when: inventory_hostname in groups['vplmn']
-      timeout: "{{ test_command_timeout }}"
 
     - name: Print VPLMN test command output
       ansible.builtin.debug:

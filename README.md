@@ -19,30 +19,32 @@ It requires a .yaml config file to store the required parameters for execution. 
 ```
 ---
 ogs:
-  - repo: "<Open5GS repo>"
-  - version: <the git version used when cloning the repo>
+  repo: "<Open5GS repo>"
+  version: <the git version used when cloning the repo>
 
 hplmn:
-  - config_repo: <HPLMN Config repo> 
-  - hosts_path: <Path to Hosts used in HPLMN>
-  - test_script: <Path to your test script>
-  - private_ip: "<IP for private network>"
-  - region: "<region for HPLMN>"
+  config_repo: <HPLMN Config repo> 
+  hosts_path: <Path to Hosts used in HPLMN>
+  test_script: <Path to your test script>
+  private_ip: "<IP for private network>"
+  region: "<region for HPLMN>"
 
 
 vplmn:
-  - config_repo: <VPLMN Config repo> 
-  - hosts_path: <Path to Hosts used in VPLMN>
-  - test_script: <Path to your test script>
-  - private_ip: "<IP for private network>"
-  - region: "<region for VPLMN>"
+  config_repo: <VPLMN Config repo> 
+  hosts_path: <Path to Hosts used in VPLMN>
+  test_script: <Path to your test script>
+  private_ip: "<IP for private network>"
+  region: "<region for VPLMN>"
 
 vultr:
-  - vpc:
-    - v4_subnet: "<subnet for private network>"
-    - v4_subnet_mask: "<subnet mask for private network>"
-    - region: "<region for private network>"
-  - plan_id: "<plan used for machines>"
+  vpc:
+    v4_subnet: "<subnet for private network>"
+    v4_subnet_mask: "<subnet mask for private network>"
+    region: "<region for private network>"
+  hplmn_region: "<region for HPLMN>"
+  vplmn_region: "<region for VPLMN>"
+  plan_id: "<plan used for machines>"
 
 vagrant:
   ram: <RAM to be allocated to each VM (in MB)>

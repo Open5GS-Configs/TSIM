@@ -54,8 +54,8 @@ class OpenTofu(InfrastructureManager, CommandLineManager):
                 f.write(f'vultr_api_key = \"{self.config["vultr"]["api_key"]}\"\n')
                 f.write(f'vultr_plan_id = \"{self.config["vultr"]["plan_id"]}\"\n')
             
-                f.write(f'h_region = \"{self.config["hplmn"]["region"]}\"\n')
-                f.write(f'v_region = \"{self.config["vplmn"]["region"]}\"\n')
+                f.write(f'h_region = \"{self.config["vultr"]["hplmn_region"]}\"\n')
+                f.write(f'v_region = \"{self.config["vultr"]["vplmn_region"]}\"\n')
                 f.write(f'user_ssh_key = \"{self.config["user_ssh_key"]}\"\n')
                 f.write(f'ansible_ssh_key = \"{self.config["ansible_ssh_key"]}\"\n')
 

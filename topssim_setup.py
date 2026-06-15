@@ -1,3 +1,5 @@
+#!/usr/bin/env python3
+
 from json import loads
 from pathlib import Path
 from subprocess import run
@@ -20,8 +22,8 @@ LOCAL_PROVIDERS = ["vb", "vbox", "virtual box", "virtualbox", "vmware", "vm ware
 COMMON_REQUIRED_PARAMETERS = ["ogs", "hplmn", "vplmn", "provider"]
 LOCAL_REQUIRED_PARAMETERS = ["vagrant"]
 VAGRANT_REQUIRED_PARAMETERS = ["ram", "disk", "cpu"]
-PLMN_CLOUD_REQUIRED_PARAMETERS = ["region", "test_script"]
-VULTR_CLOUD_REQUIRED_PARAMETERS = ["plan_id"]
+PLMN_CLOUD_REQUIRED_PARAMETERS = ["test_script"]
+VULTR_CLOUD_REQUIRED_PARAMETERS = ["plan_id", "hplmn_region", "hplmn_region"]
 VPC_CLOUD_REQUIRED_PARAMETERS = ["region"]
 
 SEPARATOR = ' '+'='*10+' '
@@ -30,8 +32,9 @@ DEFAULT_BRANCH = "main"
 
 class setupTOPSSIM():
 
-    def __init__(self, config):
+    def __init__(self, config, run):
         self.config = config
+        self.run = run
 
         self.strategy = None
         self.ansibleManager = None
@@ -145,17 +148,17 @@ class setupTOPSSIM():
             print("Checking Vultr region availability")
             availRegions = self.getVultrRegions(self.config["vultr"]['api_key'])
             idAvailRegions = [region['id'] for region in availRegions]
-            for region in [self.config["hplmn"]["region"], self.config["vplmn"]["region"]]:
+            for region in [self.config["vultr"]["hplmn_region"], self.config["vultr"]["vplmn_region"]]:
                 if region not in idAvailRegions:
                     self._raiseWrongConfig(region)
             
             if "vpc" not in self.config["vultr"].keys():
-                config["vpc_v4_subnet_mask"] = "28"
-                config["vpc_v4_subnet"] = "10.10.0.0"
+                config["vultr"]["vpc"]["v4_subnet_mask"] = "28"
+                config["vultr"]["vpc"]["v4_subnet"] = "10.10.0.0"
             elif "v4_subnet_mask" not in self.config["vultr"]["vpc"].keys():
-                config["vpc_v4_subnet_mask"] = "28"                
+                config["vultr"]["vpc"]["v4_subnet_mask"] = "28"                
             elif "v4_subnet" not in self.config["vultr"]["vpc"].keys():
-                config["vpc_v4_subnet"] = "10.10.0.0"
+                config["vultr"]["vpc"]["v4_subnet"] = "10.10.0.0"
             
             for p in VULTR_CLOUD_REQUIRED_PARAMETERS:
                 if p not in self.config["vultr"].keys():
@@ -280,7 +283,8 @@ def main():
     parser.add_argument("-readme", action='store_true', help="Prints the README")
     
     # General Arguments
-    parser.add_argument("-c", "--config", help="Gives the path to the config file that outlines all of the information necessary to execute the program")
+    parser.add_argument("-c", "--config", help="Gives the path to the config file that outlines all of the information necessary to configure the VMs")
+    parser.add_argument("-r", "--run", help="Gives the path to the a file that describes a sequence of commands to be run in the VMs")
     parser.add_argument("--provider", help="The VM provider that is used (Vultr, VirtualBox, VMWare, QEMU)")
     parser.add_argument("--ogs_repo", help="The Open5GS repo that is installed to the VMs")
     parser.add_argument("--ogs_version", help="The version (branch) of the Open5GS repo that is cloned")
@@ -308,12 +312,16 @@ def main():
 
     args = parser.parse_args()
     
-    print(args)
     config = {}
     if hasattr(args, "config"):
         config = parseConfig(args.config, config)
     else:
         print("Config file was not passed!")
+    run = {}
+    if hasattr(args, "run"):
+        config = parseConfig(args.run, run)
+    else:
+        print("Run file was not passed!")
 
     config = apply_cli_overrides(config, args)
 
@@ -321,7 +329,7 @@ def main():
         if hasattr(args, flag):
             config[flag] = getattr(args, flag)
 
-    setup = setupTOPSSIM(config)
+    setup = setupTOPSSIM(config, run)
 
     if "destroy" in config.keys():
         setup.destroy()
@@ -334,6 +342,20 @@ def main():
     setup.setup()
 
     print(f"\n\nExecution Complete!\nTime Elapsed: {(time()-start_time):.2f} seconds")
+
+
+def parseRun(runFile, run):
+    print(SEPARATOR + "Reading Config File" + SEPARATOR)
+    try:
+        f = open(runFile, 'r')
+    except FileNotFoundError:
+        print(f"Inputted config file was not found: {runFile}")
+    else:
+        with f:
+            run = yaml.load(f, Loader=yaml.SafeLoader)
+    print("\nFile read succesfully!")
+
+    return run
 
 
 def parseConfig(configFile, config):
@@ -369,8 +391,8 @@ def apply_cli_overrides(config, args):
         "vplmn_ip": ("vplmn", "private_ip"),
         "h_test": ("hplmn", "test_script"),
         "v_test": ("vplmn", "test_script"),
-        "h_region": ("hplmn", "region"),
-        "v_region": ("vplmn", "region"),
+        "h_region": ("vultr", "hplmn_region"),
+        "v_region": ("vultr", "vplmn_region"),
         "vultr_plan_id": ("vultr", "plan_id"),
         "vultr_api_key": ("vultr", "api_key"),
         "vpc_v4_subnet": ("vultr", "vpc", "v4_subnet"),
