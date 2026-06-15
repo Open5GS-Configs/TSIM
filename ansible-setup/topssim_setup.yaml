@@ -23,10 +23,13 @@
   tags: config_stage
   roles:
     - Open5GS Config
-    - Netplan Config
+    - role: Netplan Config
+      when: provider == "vultr"
   vars:
     enp8s0_block: |
       - "{{ private_ip }}/{{ vpc_v4_subnet_mask }}"
+    eth1_block: |
+      - "{{ private_ip }}/24"
 
 - name: Create Services
   hosts: all
@@ -36,6 +39,7 @@
   roles: 
     - role: Create Services
       when: create_services
+  become: yes
 
 - name: Testing Stage
   hosts: all
@@ -69,5 +73,6 @@
       ansible.builtin.debug:
         var: vplmn_test
       when: inventory_hostname in groups['vplmn']
+  become: yes
 
 

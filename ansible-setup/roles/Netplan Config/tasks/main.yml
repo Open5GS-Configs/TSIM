@@ -11,12 +11,13 @@
     regexp: '^\s+- "[\d\.]+/[\d]+"$'
     replace: ''
 
-- name: Set static ips for sepp link
+- name: Set static ips for sepp link (Vultr)
   ansible.builtin.blockinfile:
     path: "{{ dest_netplan_path }}"
     marker: "# {mark} ANSIBLE MANAGED BLOCK - enp8s0"
     insertafter: '      addresses:'
     block: "{{ enp8s0_block | indent(6, first=true) }}"
+  when: provider == "vultr"
 
 - name: Apply Netplan Config
   ansible.builtin.command:

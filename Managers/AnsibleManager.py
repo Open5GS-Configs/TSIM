@@ -99,9 +99,7 @@ class AnsibleManager(CommandLineManager):
                     
                     g.write("vpc_v4_subnet_mask: "  + f'\"{self.config["vultr"]["vpc"]["v4_subnet_mask"]}\"' + "\n")
                 else:
-                    # TODO 
-                    # LOCAL PROVIDER
-                    self.config["dest_netplan_path"] = "/etc/netplan/00-installer-config.yaml"
+                    self.config["dest_netplan_path"] = "/etc/netplan/50-vagrant.yaml"
                 
                 f.write("provider: " + self.config["provider"])
                 

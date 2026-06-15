@@ -1,1 +1,1 @@
-dest_netplan_path: "/etc/netplan/00-installer-config.yaml"
+dest_netplan_path: "/etc/netplan/50-vagrant.yaml"

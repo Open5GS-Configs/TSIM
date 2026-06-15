@@ -1,5 +1,5 @@
 ---
-vplmn_test_script: /home/agustin/tests/vplmn_test.sh
-hplmn_test_script: /home/agustin/tests/hplmn_test.sh
+vplmn_test_script: /home/aeeguiguren/Documents/tests/vplmn_test.sh
+hplmn_test_script: /home/aeeguiguren/Documents/tests/hplmn_test.sh
 test_command_timeout: 120
 create_services: "True"
