@@ -11,7 +11,7 @@
     regexp: '^\s+- "[\d\.]+/[\d]+"$'
     replace: ''
 
-- name: Set static ips for sepp link
+- name: Set static ips for sepp link 
   ansible.builtin.blockinfile:
     path: "{{ dest_netplan_path }}"
     marker: "# {mark} ANSIBLE MANAGED BLOCK - enp8s0"

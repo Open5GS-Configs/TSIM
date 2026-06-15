@@ -14,42 +14,49 @@ It clones and builds an Open5GS repo into /root/open5gs/ and copies the specifie
 <img src="/img/diagram.png" width="75%">
 
 ### Config 
-It requires a .yaml config file to store the required parameters for execution. This is a sample of a config file:
+It requires a .yaml config file to store the required parameters for execution. Options differ between providers. This is a sample of a config file:
 
 ```
 ---
+ogs:
+  repo: "<Open5GS repo>"
+  version: <the git version used when cloning the repo>
 
-ogs_repo: "<Open5GS repo>"
-ogs_version: main
-hplmn_config_repo: “<HPLMN Config repo>”
-vplmn_config_repo: “<VPLMN Config repo>”
-vplmn_hosts_path: “<Path to Hosts used in VPLMN>”
-hplmn_hosts_path: “<Path to Hosts used in HPLMN>”
-create_services: true
+hplmn:
+  config_repo: <HPLMN Config repo> 
+  hosts_path: <Path to Hosts used in HPLMN>
+  test_script: <Path to your test script>
+  private_ip: "<IP for private network>"
+  region: "<region for HPLMN>"
 
+
+vplmn:
+  config_repo: <VPLMN Config repo> 
+  hosts_path: <Path to Hosts used in VPLMN>
+  test_script: <Path to your test script>
+  private_ip: "<IP for private network>"
+  region: "<region for VPLMN>"
+
+vultr:
+  vpc:
+    v4_subnet: "<subnet for private network>"
+    v4_subnet_mask: "<subnet mask for private network>"
+    region: "<region for private network>"
+  hplmn_region: "<region for HPLMN>"
+  vplmn_region: "<region for VPLMN>"
+  plan_id: "<plan used for machines>"
+
+vagrant:
+  ram: <RAM to be allocated to each VM (in MB)>
+  cpu: <CPU cores to be allocated to each VM>
+  disk: <Disk size of each VM (in GB)>
+
+create_services: <(true or false) creates service files in /etc/systemd/system and enables all components to run at boot>
 user_ssh_key: "<SSH key of the user>"
-
-hplmn_test_command: ./misc/db/open5gs-dbctl add "999700000021309" "465B5CE8 B199B49F AA5F0A2E E238A6BC" "E8ED289D EBA952E4 283B54E8 8E6183CA"
-vplmn_test_command: ./build/tests/registration/registration -c /root/open5gs/build/configs/examples/gnb-001-01-ue-999-70.yaml simple-test
-
-hplmn_ip: "10.10.0.3"
-vplmn_ip: "10.10.0.4"
-vpc_v4_subnet: "10.10.0.0"
-vpc_v4_subnet_mask: "28"
-
-provider: "Vultr"
-
-h_region: "yto"
-v_region: "yto"
-vpc_region: "yto"
-vultr_plan_id: "vc2-2c-2gb"
-
+provider: "<your VM provider>"
 ```
 
-1. Vultr: 
-The API key for Vultr should be provided as an environment variable with:
-`export VULTR_API_KEY=<your API key>`
-
+For **Local** VMs, it is important to note that the ram is meant to be in MB and the disk in GB. Also, Vagrant automatically forwards localhost ports for ssh connections to the VMs. The default user in the VMs will be called "vagrant" and the default password is also "vagrant".
 
 ### Running the program
 You can call it using:
@@ -61,31 +68,37 @@ Some examples are:
 To run just the configuration and testing stages of Ansible on already existing machines:
 `python3 topssim_setup.py -c /home/agustin/5G_Setup/config.yaml -ansible --ansible_tags "config_stage testing_stage"`
 
-It is also useful to know that both OpenTofu and Ansible provide CLI tools. These can be used to isolate a part of the process. Some notable commands are:
+It is also useful to know that OpenTofu, Vagrant, and Ansible provide CLI tools. These can be used to isolate a part of the process. Some notable commands are:
 
-1. OpenTofu:   
+1. Ansible:    
+`ansible all -m ping ` to test connectivity    
+`ansible-playbook topssim_setup.yaml` to run the playbook   
+`ansible-inventory --list-hosts` to see the hosts    
+`ansible-galaxy role list` to see the installed roles  
+
+2. OpenTofu:   
 `tofu show`    
 `tofu state list`    
 `tofu state show vultr_vpc.sepp-link` (the address of the instances lives in _vultr-opentofu/vultr_resources.tf_)   
 
-2. Ansible:    
-`ansible all -m ping ` to test connectivity    
-`ansible-playbook topssim_setup.yaml` to run the playbook   
-`ansible-inventory --list-hosts` to see the hosts    
-`ansible-galaxy role list` to see the installed roles    
+3. Vagrant:
+`vagrant up`
+`vagrant ssh-config`
+`vagramt destroy`
 
 ### Troubleshooting
 
-1. If any issues are present with OpenTofu this is good to keep in mind:     
-
-- If a resource has been deleted manually, OpenTofu will not recognize the change. It must be manually deleted from its instances.     
-This shows the states that are being tracked: `tofu state list`      
-If the instance deleted is still there, you can remove it with: `tofu state rm vultr_vpc.sepp-link` (instead of `vultr_vpc.sepp-link` insert your instance's address).     
-
-2. Ansible:      
+1. Ansible:      
 
 - To add a SSH key passphrase to be recognized by Ansible when creating the SSH connection to the hosts:    
 Start SSH Agent:     
 `eval "$(ssh-agent -s)"`     
 And add private key:     
 `ssh-add ~/.ssh/id_rsa`     
+
+2. If any issues are present with OpenTofu this is good to keep in mind:     
+
+- If a resource has been deleted manually, OpenTofu will not recognize the change. It must be manually deleted from its instances.     
+This shows the states that are being tracked: `tofu state list`      
+If the instance deleted is still there, you can remove it with: `tofu state rm vultr_vpc.sepp-link` (instead of `vultr_vpc.sepp-link` insert your instance's address).     
+

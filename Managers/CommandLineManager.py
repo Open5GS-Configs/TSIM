@@ -16,7 +16,8 @@ class CommandLineManager():
 
         if(res.returncode != 0):
             print(f"Command ({commandName}) presented an error [Status code: {res.returncode}]")
-            return res.returncode
+            return res 
         else:
             print(f"Command ({commandName}) was succesful")
-            return 0
+            return res
+

@@ -2,13 +2,19 @@
 ---
 all:
   vars:
-    ansible_user: root
+    ansible_user: vagrant
   children: 
     hplmn:  
       hosts:
         hplmn_node_1: 
-          ansible_host: 155.138.146.177
+          ansible_host: 127.0.0.1
+        
+          ansible_port: 2222
+        
     vplmn:  
       hosts:
         vplmn_node_1:
-          ansible_host: 155.138.136.156
+          ansible_host: 127.0.0.1
+        
+          ansible_port: 2200
+        

@@ -87,6 +87,7 @@
   ansible.builtin.script: files/correctLogPath.py
   args:
     executable: python3
+  become: yes
 
 - name: Modify ufw rules (INPUT)
   ansible.builtin.command:

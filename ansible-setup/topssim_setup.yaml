@@ -23,10 +23,13 @@
   tags: config_stage
   roles:
     - Open5GS Config
-    - Netplan Config
+    - role: Netplan Config
+      when: provider == "vultr"
   vars:
     enp8s0_block: |
       - "{{ private_ip }}/{{ vpc_v4_subnet_mask }}"
+    eth1_block: |
+      - "{{ private_ip }}/24"
 
 - name: Create Services
   hosts: all
@@ -36,6 +39,7 @@
   roles: 
     - role: Create Services
       when: create_services
+  become: yes
 
 - name: Testing Stage
   hosts: all
@@ -48,22 +52,27 @@
     #    cmd: ./build/tests/registration/registration -c /root/open5gs/build/configs/sample.yaml simple-test
     #    chdir: /root/open5gs
 
-    - name: Run HPLMN test command
-      ansible.builtin.shell: 
-        cmd: "{{ hplmn_test_command }}"
-        chdir: /root/open5gs
+    - name: Run HPLMN test script
+      ansible.builtin.script: "{{ hplmn_test_script }}"
       register: hplmn_test
       when: inventory_hostname in groups['hplmn']
+      timeout: "{{ test_command_timeout }}"
 
     - name: Print HPLMN test command output
       ansible.builtin.debug:
         var: hplmn_test
       when: inventory_hostname in groups['hplmn']
 
-    - name: Run VPLMN test command
-      ansible.builtin.shell: 
-        cmd: "{{ vplmn_test_command }}"
-        chdir: /root/open5gs
+    - copy:
+        src: "{{ vplmn_test_script }}"
+        dest: /tmp/vplmn_test.sh
+        mode: '0755'
+
+    - name: Run VPLMN test script
+      ansible.builtin.shell:
+        cmd: /tmp/vplmn_test.sh
+      async: "{{ test_command_timeout }}"
+      poll: 5
       register: vplmn_test
       when: inventory_hostname in groups['vplmn']
 
@@ -71,5 +80,6 @@
       ansible.builtin.debug:
         var: vplmn_test
       when: inventory_hostname in groups['vplmn']
+  become: yes
 
 

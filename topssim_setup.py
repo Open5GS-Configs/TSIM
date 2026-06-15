@@ -1,3 +1,5 @@
+#!/usr/bin/env python3
+
 from json import loads
 from pathlib import Path
 from subprocess import run
@@ -17,9 +19,12 @@ from Managers.AnsibleManager import AnsibleManager
 CLOUD_PROVIDERS = ["vultr"]
 LOCAL_PROVIDERS = ["vb", "vbox", "virtual box", "virtualbox", "vmware", "vm ware"]
 
-COMMON_REQUIRED_PARAMETERS = ["ogs_repo", "hplmn_ip", "vplmn_ip", "user_ssh_key"]
-LOCAL_REQUIRED_PARAMETERS = ["ram", "disk", "cpu"]
-CLOUD_REQUIRED_PARAMETERS = ["h_region", "v_region", "vultr_api_key", "vultr_plan_id", "vpc_region"]
+COMMON_REQUIRED_PARAMETERS = ["ogs", "hplmn", "vplmn", "provider"]
+LOCAL_REQUIRED_PARAMETERS = ["vagrant"]
+VAGRANT_REQUIRED_PARAMETERS = ["ram", "disk", "cpu"]
+PLMN_CLOUD_REQUIRED_PARAMETERS = ["test_script"]
+VULTR_CLOUD_REQUIRED_PARAMETERS = ["plan_id", "hplmn_region", "hplmn_region"]
+VPC_CLOUD_REQUIRED_PARAMETERS = ["region"]
 
 SEPARATOR = ' '+'='*10+' '
 DEFAULT_BRANCH = "main"
@@ -27,8 +32,9 @@ DEFAULT_BRANCH = "main"
 
 class setupTOPSSIM():
 
-    def __init__(self, config):
+    def __init__(self, config, run):
         self.config = config
+        self.run = run
 
         self.strategy = None
         self.ansibleManager = None
@@ -49,21 +55,20 @@ class setupTOPSSIM():
         self._addAnsibleSSHKey(self.config)
 
         print(SEPARATOR + f"Calling {self.strategy.__class__.__name__}" + SEPARATOR)
-        self.strategy.callInfManager(self.config)
+        self.strategy.callInfManager()
 
         # now the VMs have been created and the IPs to ssh into the machines are stored within config
         print("\n"+SEPARATOR+f"Start Ansible Configuration"+SEPARATOR+"\n\n")
-
         self.callAnsible()
 
-        print(f'\n\nThe public IPs of the VMs are:\n - HPLMN: {self.config["hplmn_public_ip"]}\n - VPLMN: {self.config["vplmn_public_ip"]}')
+        print(f'\n\nThe public IPs of the VMs are:\n - HPLMN: {self.config["hplmn"]["public_ip"]}\n - VPLMN: {self.config["vplmn"]["public_ip"]}')
 
 
     def destroy(self):
         if self.config["provider"].lower() in CLOUD_PROVIDERS:
-            strategy = OpenTofu()
+            strategy = OpenTofu(self.config)
         elif self.config["provider"].lower() in LOCAL_PROVIDERS:
-            strategy = Vagrant()
+            strategy = Vagrant(self.config)
         else:
             raise Exception("provider not recognized. Available providers are: VirtualBox, VMWare and Vultr")
 
@@ -75,6 +80,7 @@ class setupTOPSSIM():
     def callAnsible(self, writeInventory=True, tags=None):
         self.ansibleManager.configure(writeInventory)
         print("\n"+SEPARATOR+f"Start Ansible Setup in VMs"+SEPARATOR+"\n\n")
+         
         self.ansibleManager.setup(tags)
 
 
@@ -101,17 +107,17 @@ class setupTOPSSIM():
     def _checkConfigurationValid(self):
         configKeys = self.config.keys()
 
-        if self.config["VultrRegions"]:
+        if "VultrRegions" in configKeys:
             regions = self.getVultrRegions(self.config['vultr_api_key'])
             [print(f"City: {region['city']}, ID: {region['id']}\n") for region in regions]
             return False
             
-        if self.config["VultrPlans"]:
+        if "VultrPlans" in configKeys:
             plans = self.getVultrPlans(self.config['vultr_api_key'])
             [print(f"ID: {plan['id']}\n") for plan in plans]
             return False
             
-        if self.config["readme"]:
+        if "readme" in configKeys:
             with open("README.md", "r") as f:
                 print(f.read())
             return False
@@ -119,44 +125,61 @@ class setupTOPSSIM():
         print(SEPARATOR + "Asserting necessary parameters" + SEPARATOR)
         if self.config["provider"].lower() in CLOUD_PROVIDERS:
             print("\nCloud provider Recognized!")
+            self.config["location"] = "cloud"
+
+            for plmn in ["hplmn", "vplmn"]:
+                for p in PLMN_CLOUD_REQUIRED_PARAMETERS:
+                    if p not in self.config[plmn].keys():
+                        self._raiseMissingConfig(p)
 
             self.config["vultr_api_key"] = getenv("VULTR_API_KEY")
             if  self.config["vultr_api_key"] == None or self.config["vultr_api_key"] == "":
                 self._raiseMissingConfig("vultr_api_key")
-
-            for p in CLOUD_REQUIRED_PARAMETERS:
-                if p not in configKeys:
-                    self._raiseMissingConfig(p)
             
             print("Checking Vultr plan availability")
-            availPlans = self.getVultrPlans(self.config['vultr_api_key'])
+            availPlans = self.getVultrPlans(self.config["vultr"]['api_key'])
             idAvailPlans = [plan['id'] for plan in availPlans]
-            if self.config["vultr_plan_id"] not in idAvailPlans:
+            if self.config["vultr"]["plan_id"] not in idAvailPlans:
                 self._raiseWrongConfig("vultr_plan_id")
 
             print("Checking Vultr region availability")
-            availRegions = self.getVultrRegions(self.config['vultr_api_key'])
+            availRegions = self.getVultrRegions(self.config["vultr"]['api_key'])
             idAvailRegions = [region['id'] for region in availRegions]
-            for region in [self.config["h_region"], self.config["v_region"]]:
+            for region in [self.config["vultr"]["hplmn_region"], self.config["vultr"]["vplmn_region"]]:
                 if region not in idAvailRegions:
                     self._raiseWrongConfig(region)
             
-            if "vpc_v4_subnet_mask" not in configKeys:
-                config["vpc_v4_subnet_mask"] = "28"
-                
-            if "vpc_v4_subnet" not in configKeys:
-                config["vpc_v4_subnet"] = "10.10.0.0"
+            if "vpc" not in self.config["vultr"].keys():
+                config["vultr"]["vpc"]["v4_subnet_mask"] = "28"
+                config["vultr"]["vpc"]["v4_subnet"] = "10.10.0.0"
+            elif "v4_subnet_mask" not in self.config["vultr"]["vpc"].keys():
+                config["vultr"]["vpc"]["v4_subnet_mask"] = "28"                
+            elif "v4_subnet" not in self.config["vultr"]["vpc"].keys():
+                config["vultr"]["vpc"]["v4_subnet"] = "10.10.0.0"
+            
+            for p in VULTR_CLOUD_REQUIRED_PARAMETERS:
+                if p not in self.config["vultr"].keys():
+                    self._raiseMissingConfig(p)
+            
+            for p in VPC_CLOUD_REQUIRED_PARAMETERS:
+                if p not in self.config["vultr"]["vpc"].keys():
+                    self._raiseMissingConfig(p)
 
-            self.strategy = OpenTofu()
+            self.strategy = OpenTofu(self.config)
 
         elif self.config["provider"].lower() in LOCAL_PROVIDERS:
             print("\nLocal provider Recognized!")
+            self.config["location"] = "local"
 
             for p in LOCAL_REQUIRED_PARAMETERS:
                 if p not in configKeys:
                     self._raiseMissingConfig(p)
+            
+            for p in VAGRANT_REQUIRED_PARAMETERS:
+                if p not in self.config["vagrant"].keys():
+                    self._raiseMissingConfig(p)
 
-            self.strategy = Vagrant()
+            self.strategy = Vagrant(self.config)
         
         else:
             raise Exception("provider not recognized. Available providers are: VirtualBox, VMWare and Vultr")
@@ -165,44 +188,50 @@ class setupTOPSSIM():
             if p not in configKeys:
                 self._raiseMissingConfig(p)
 
-        for c in [["hplmn_config_path", "hplmn_config_repo"], ["vplmn_config_path", "vplmn_config_repo"], ["hplmn_hosts_path", "hplmn_hosts_repo"], ["vplmn_hosts_path", "vplmn_hosts_repo"]]:
-            configPresent = False
-
-            if c[0] in configKeys:
-                configPresent = True
-            else:
-                self.config[c[0]] = None
-
-            if c[1] in configKeys:
-                configPresent = True
-            else:
-                self.config[c[1]] = None
-            
-            if not configPresent:
-                self._raiseMissingConfig(f"Either {c[0]} or {c[1]} must be present")
-        
-        if "ogs_version" not in configKeys:
-            self.config["ogs_version"] = DEFAULT_BRANCH
-        elif self.config["ogs_version"] == None:
-            self.config["ogs_version"] = DEFAULT_BRANCH
-
-        if "services" not in configKeys:
-            config["services"] = False
-        
         for plmn in ["hplmn", "vplmn"]:
-            if (plmn + "_test_command") not in configKeys:
-                self.config[plmn + "_test_command"] = ":"
+            plmnKeys = self.config[plmn].keys()
+
+            for c in [["config_path", "config_repo"], ["hosts_path", "hosts_repo"]]:
+                configPresent = False
+
+                if c[0] in plmnKeys:
+                    configPresent = True
+                else:
+                    self.config[plmn][c[0]] = None
+
+                if c[1] in plmnKeys:
+                    configPresent = True
+                else:
+                    self.config[plmn][c[1]] = None
+                
+                if not configPresent:
+                    self._raiseMissingConfig(f"Either {c[0]} or {c[1]} must be present")
         
+        if "version" not in self.config["ogs"].keys():
+            self.config["ogs"]["version"] = DEFAULT_BRANCH
+        elif self.config["ogs"]["version"] == None:
+            self.config["ogs"]["version"] = DEFAULT_BRANCH
+
+        if "create_services" not in configKeys:
+            config["create_services"] = False
+
+        if "user_ssh_key" not in configKeys:
+            config["user_ssh_key"] = ""
+        
+        if "ansible_tags" not in configKeys:
+            self.config["ansible_tags"] = ""
+
         return True
 
 
     def _addAnsibleSSHKey(self, config):
-        homeDirectory = Path(getenv("HOME"))
-        publicSSHPath = homeDirectory.joinpath(".ssh/id_rsa.pub")
+        sshConfig = Path(getenv("HOME")).joinpath(".ssh")
+        privateSSHPath = sshConfig.joinpath("id_rsa")
+        publicSSHPath = privateSSHPath.with_suffix(".pub")
 
         if not publicSSHPath.is_file():
             print("SSH Key not found. Generating new key... \n")
-            run(["ssh-keygen", "-t", "ed25519", "-N", "''", "-f", publicSSHPath])
+            run(["ssh-keygen", "-t", "ed25519", "-N", "", "-f", privateSSHPath])
             print("Created SSH key for Control Node!\n")
         else:
             print("SSH key for Control Node was found\n")
@@ -225,10 +254,20 @@ class setupTOPSSIM():
 
 
 def main():    
+    '''
+    This part of the code compiles and assimilates the command line arguments 
+    and the configuration coming from the configuration file. The values given
+    through the command line are mapped to the same structure than the ones in
+    the config file, so that they can be used the same way everywhere.
+
+    The command line arguments take precedence over the config file.
+    '''
+
     start_time = time()
 
     parser = argparse.ArgumentParser(description="Open5Gs testing environment \
-                                                setup for the TOPSSIM project")
+                                                setup for the TOPSSIM project", 
+                                                argument_default=argparse.SUPPRESS)
 
     # Actions
     parser.add_argument("-destroy", action='store_true', help="Destroys all of the current VMs")
@@ -241,21 +280,23 @@ def main():
     parser.add_argument("-readme", action='store_true', help="Prints the README")
     
     # General Arguments
-    parser.add_argument("-c", "--config", help="Gives the path to the config file that outlines all of the information necessary to execute the program")
+    parser.add_argument("-c", "--config", help="Gives the path to the config file that outlines all of the information necessary to configure the VMs")
+    parser.add_argument("-r", "--run", help="Gives the path to the a file that describes a sequence of commands to be run in the VMs")
     parser.add_argument("--provider", help="The VM provider that is used (Vultr, VirtualBox, VMWare, QEMU)")
     parser.add_argument("--ogs_repo", help="The Open5GS repo that is installed to the VMs")
     parser.add_argument("--ogs_version", help="The version (branch) of the Open5GS repo that is cloned")
     parser.add_argument("--user_ssh_key", help="An ssh key automatically added to the authorized keys in the VMs")
     parser.add_argument("--hplmn_ip", help="The VPC ip of the home network")
     parser.add_argument("--vplmn_ip", help="The VPC ip of the visited network")
-    parser.add_argument("--services", help="Creates service files for OGS components in /etc/system/systemd")
+    parser.add_argument("--h_test", help="The path of the test script to be executed in the HPLMN")
+    parser.add_argument("--v_test", help="The path of the test script to be executed in the VPLMN")
+    parser.add_argument("--create_services", action='store_true', help="Creates service files for OGS components in /etc/system/systemd")
     parser.add_argument('--ansible_tags', nargs='+', help="Tells ansible which stages to run. Options: install_stage, config_stage, testing_stage, services_stage, ogstun, install_ogs")
 
     # Local Arguments
     parser.add_argument("--ram", help="The RAM used for the VMs (LOCAL ONLY)")
     parser.add_argument("--disk", help="The disk size allocated to the VMs (LOCAL ONLY)")
     parser.add_argument("--cpu", help="The amount of CPU allocated to the VMs (LOCAL ONLY)")
-
 
     # Vultr Arguments
     parser.add_argument("--h_region", help="The region where the home VM is created")
@@ -264,26 +305,35 @@ def main():
     parser.add_argument("--vultr_api_key", help="Personal Vultr API key")
     parser.add_argument("--vultr_plan_id", help="The plan used to create the VMs")
     parser.add_argument("--vpc_v4_subnet", help="The subnet used to create the VPC betwene the VMs")
-    parser.add_argument("--vpc_v4_subnet_mask:", help="The mask for the VPC subnet")
+    parser.add_argument("--vpc_v4_subnet_mask", help="The mask for the VPC subnet")
 
-    clArgs, remaining_argv = parser.parse_known_args()
+    args = parser.parse_args()
     
-    if clArgs.config:
-        fileConfig = parseConfig(clArgs.config)
+    config = {}
+    if hasattr(args, "config"):
+        config = parseConfig(args.config, config)
+    else:
+        print("Config file was not passed!")
+    run = {}
+    if hasattr(args, "run"):
+        config = parseConfig(args.run, run)
+    else:
+        print("Run file was not passed!")
 
-        parser.set_defaults(**fileConfig)
+    config = apply_cli_overrides(config, args)
 
-    config = vars(parser.parse_args())
-    
-    
-    setup = setupTOPSSIM(config)
+    for flag in ("destroy", "restart", "ansible", "VultrRegions", "VultrPlans", "readme"):
+        if hasattr(args, flag):
+            config[flag] = getattr(args, flag)
 
-    if config["destroy"]:
+    setup = setupTOPSSIM(config, run)
+
+    if "destroy" in config.keys():
         setup.destroy()
         return
-    elif config["restart"]:
+    elif "restart" in config.keys():
         setup.destroy()
-    elif config["ansible"]:
+    elif "ansible" in config.keys():
         setup.callAnsible(writeInventory=False, tags=config["ansible_tags"])
         return
     setup.setup()
@@ -291,19 +341,72 @@ def main():
     print(f"\n\nExecution Complete!\nTime Elapsed: {(time()-start_time):.2f} seconds")
 
 
-def parseConfig(configFile):
-        print(SEPARATOR + "Reading Config File" + SEPARATOR)
-        config = {}
-        try:
-            f = open(configFile, 'r')
-        except FileNotFoundError:
-            print(f"Inputted config file was not found: {configFile}")
-        else:
-            with f:
-                config = yaml.load(f, Loader=yaml.SafeLoader)
-        print("\nFile read succesfully!")
+def parseRun(runFile, run):
+    print(SEPARATOR + "Reading Config File" + SEPARATOR)
+    try:
+        f = open(runFile, 'r')
+    except FileNotFoundError:
+        print(f"Inputted config file was not found: {runFile}")
+    else:
+        with f:
+            run = yaml.load(f, Loader=yaml.SafeLoader)
+    print("\nFile read succesfully!")
 
-        return config
+    return run
+
+
+def parseConfig(configFile, config):
+    print(SEPARATOR + "Reading Config File" + SEPARATOR)
+    try:
+        f = open(configFile, 'r')
+    except FileNotFoundError:
+        print(f"Inputted config file was not found: {configFile}")
+    else:
+        with f:
+            config = yaml.load(f, Loader=yaml.SafeLoader)
+    print("\nFile read succesfully!")
+
+    return config
+
+
+def set_nested(d, path, value):
+    cur = d
+    for key in path[:-1]:
+        cur = cur.setdefault(key, {})
+    cur[path[-1]] = value
+
+
+def apply_cli_overrides(config, args):
+    # Map CLI argument names to nested config paths
+    overrides = {
+        "provider": ("provider",),
+        "user_ssh_key": ("user_ssh_key",),
+        "create_services": ("create_services",),
+        "ogs_repo": ("ogs", "repo"),
+        "ogs_version": ("ogs", "version"),
+        "hplmn_ip": ("hplmn", "private_ip"),
+        "vplmn_ip": ("vplmn", "private_ip"),
+        "h_test": ("hplmn", "test_script"),
+        "v_test": ("vplmn", "test_script"),
+        "h_region": ("vultr", "hplmn_region"),
+        "v_region": ("vultr", "vplmn_region"),
+        "vultr_plan_id": ("vultr", "plan_id"),
+        "vultr_api_key": ("vultr", "api_key"),
+        "vpc_v4_subnet": ("vultr", "vpc", "v4_subnet"),
+        "vpc_v4_subnet_mask": ("vultr", "vpc", "v4_subnet_mask"),
+        "vpc_region": ("vultr", "vpc", "region"),
+        "ansible_tags": ("ansible_tags",),
+        "ram": ("vagrant", "ram",),
+        "disk": ("vagrant", "disk",), 
+        "cpu": ("vagrant", "cpu",), 
+    }
+
+    for arg_name, path in overrides.items():
+        value = getattr(args, arg_name, None)
+        if value is not None:
+            set_nested(config, path, value)
+
+    return config
 
 
 if __name__ == "__main__":

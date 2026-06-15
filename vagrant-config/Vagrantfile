@@ -1,0 +1,91 @@
+# -*- mode: ruby -*-
+# vi: set ft=ruby :
+
+require 'yaml'
+
+SEPARATOR = ' '+'='*10+' '
+
+vars = YAML.load_file("vars.yaml")
+boxes = ["hplmn", "vplmn"]
+
+
+inventory = {}
+Vagrant.configure("2") do |config|
+
+  config.vm.boot_timeout = 600
+
+  config.vm.box = "bento/ubuntu-24.04"
+  config.vm.box_version = "202510.26.0"
+  
+  user_ssh_key = vars["box"]["user_ssh_key"]
+  ansible_ssh_key = vars["box"]["ansible_ssh_key"]
+ 
+  config.vm.provision "shell", inline: <<-SHELL
+    mkdir -p /home/vagrant/.ssh
+    echo "#{user_ssh_key}" >> /home/vagrant/.ssh/authorized_keys
+    echo "#{ansible_ssh_key}" >> /home/vagrant/.ssh/authorized_keys
+    chmod 700 /home/vagrant/.ssh
+    chmod 600 /home/vagrant/.ssh/authorized_keys
+  SHELL
+
+#       
+  N = boxes.size
+  (0...N).each do |machine_id|
+    config.vm.define "#{boxes[machine_id]}" do |machine|
+      machine.vm.hostname = vars[boxes[machine_id]]["hostname"]
+      machine.vm.network "private_network",  
+        ip:  vars[boxes[machine_id]]["private_ip"],
+        virtualbox__intnet: "sepp-link"
+
+      machine.vm.disk :disk, size: "#{vars["box"]["disk"]}GB", primary: true 
+      machine.vm.provider "virtualbox" do |v|
+        v.memory = vars["box"]["memory"]
+        v.cpus = vars["box"]["cpu"]
+      end
+      
+      machine.vm.provision "shell",
+        path: "install_python.sh"
+
+#      inventory[boxes[machine_id]] = ["#{boxes[machine_id]}_node"]
+#      inventory["#{boxes[machine_id]}:vars"] = {"private_ip" => vars[boxes[machine_id]]["private_ip"],
+#                       "use_config_path" => vars[boxes[machine_id]]["use_config_path"],
+#                       "use_hosts_path" => vars[boxes[machine_id]]["use_hosts_path"]
+#                        }
+#      if inventory["#{boxes[machine_id]}:vars"]["use_config_path"]
+#         inventory["#{boxes[machine_id]}:vars"]["config_path"] = vars[boxes[machine_id]]["config_path"]
+#      else
+#         inventory["#{boxes[machine_id]}:vars"]["config_repo"] = vars[boxes[machine_id]]["config_repo"]
+#      end
+#
+#      if inventory["#{boxes[machine_id]}:vars"]["use_hosts_path"]
+#         inventory["#{boxes[machine_id]}:vars"]["hosts_path"] = vars[boxes[machine_id]]["hosts_path"]
+#      else
+#         inventory["#{boxes[machine_id]}:vars"]["hosts_repo"] = vars[boxes[machine_id]]["hosts_repo"]
+#      end
+
+ 
+#     if machine_id == N-1
+#        machine.vm.provision :ansible do |ansible|
+#          puts "\n"+SEPARATOR+"Start Ansible Configuration"+SEPARATOR+"\n\n"
+#          # Disable default limit to connect to all the machines
+#          ansible.limit = "all"
+#          ansible.groups = inventory
+#          ansible.playbook = "../ansible-setup/topssim_setup.yaml"
+#          ansible.tags = vars["ansible_tags"]
+#        end
+#      end
+    end
+  end
+end
+
+# Create a forwarded port mapping which allows access to a specific port
+# within the machine from a port on the host machine. In the example below,
+# accessing "localhost:8080" will access port 80 on the guest machine.
+# NOTE: This will enable public access to the opened port
+# config.vm.network "forwarded_port", guest: 80, host: 8080
+
+# Create a forwarded port mapping which allows access to a specific port
+# within the machine from a port on the host machine and only allow access
+# via 127.0.0.1 to disable public access
+# config.vm.network "forwarded_port", guest: 80, host: 8080, host_ip: "127.0.0.1"
+
