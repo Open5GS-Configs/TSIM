@@ -38,13 +38,12 @@ class setupTOPSSIM():
 
         self.strategy = None
         self.ansibleManager = None
-       # try:
-        if not self._checkConfigurationValid():
+        try:
+            if not self._checkConfigurationValid():
+                return
+        except AttributeError as e:
+            print(f"Error present in configuration:(\n{e}")
             return
-       # except AttributeError as e:
-       #     print(f"Caught an error: {e}")
-       #     print("Error present in configuration:(")
-       #     return
 
         self.ansibleManager = AnsibleManager(self.config)
 
@@ -132,6 +131,10 @@ class setupTOPSSIM():
                 for p in PLMN_CLOUD_REQUIRED_PARAMETERS:
                     if p not in self.config[plmn].keys():
                         self._raiseMissingConfig(p)
+
+            self.config["vultr_api_key"] = getenv("VULTR_API_KEY")
+            if  self.config["vultr_api_key"] == None or self.config["vultr_api_key"] == "":
+                self._raiseMissingConfig("vultr_api_key")
             
             print("Checking Vultr plan availability")
             availPlans = self.getVultrPlans(self.config["vultr"]['api_key'])
