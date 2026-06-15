@@ -1,3 +1,12 @@
+locals {
+  create_user_ssh_key = var.user_ssh_key != ""
+
+  ssh_key_ids = concat(
+    [vultr_ssh_key.ansible_ssh_key.id],
+    local.create_user_ssh_key ? [vultr_ssh_key.user_ssh_key[0].id] : []
+  )
+}
+
 resource "vultr_instance" "vplmn" {
     label = var.V_HOSTNAME
     hostname = var.V_HOSTNAME
@@ -6,18 +15,18 @@ resource "vultr_instance" "vplmn" {
     os_id = "2284"
     enable_ipv6 = false
     vpc_ids = [vultr_vpc.sepp-link.id]
-    ssh_key_ids = [vultr_ssh_key.user_ssh_key.id, vultr_ssh_key.ansible_ssh_key.id]
+    ssh_key_ids = local.ssh_key_ids
 }
 
 resource "vultr_instance" "hplmn" {
     label = var.H_HOSTNAME
     hostname = var.H_HOSTNAME
     plan = var.vultr_plan_id
-    region = var.v_region
+    region = var.h_region
     os_id = "2284"
     enable_ipv6 = false
     vpc_ids = [vultr_vpc.sepp-link.id]
-    ssh_key_ids = [vultr_ssh_key.user_ssh_key.id, vultr_ssh_key.ansible_ssh_key.id]
+    ssh_key_ids = local.ssh_key_ids
 }
 
 variable "vultr_plan_id" {}
@@ -40,6 +49,7 @@ variable "vpc_v4_subnet" {}
 
 
 resource "vultr_ssh_key" "user_ssh_key" {
+  count = local.create_user_ssh_key ? 1 : 0
   name = "ssh_key"
   ssh_key = var.user_ssh_key
 }

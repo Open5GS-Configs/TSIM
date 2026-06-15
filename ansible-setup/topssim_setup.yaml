@@ -40,8 +40,6 @@
 - name: Testing Stage
   hosts: all
   tags: testing_stage
-  vars:
-    test_command_timeout: 120
   vars_files:
     - vars/vars.yaml
   tasks:
@@ -50,26 +48,22 @@
     #    cmd: ./build/tests/registration/registration -c /root/open5gs/build/configs/sample.yaml simple-test
     #    chdir: /root/open5gs
 
-    - name: Run HPLMN test command
-      ansible.builtin.shell: 
-        cmd: "{{ hplmn_test_command }}"
-        chdir: /root/open5gs
+    - name: Run HPLMN test script
+      ansible.builtin.script: "{{ hplmn_test_script }}"
       register: hplmn_test
       when: inventory_hostname in groups['hplmn']
-      timeout: test_command_timeout
+      timeout: "{{ test_command_timeout }}"
 
     - name: Print HPLMN test command output
       ansible.builtin.debug:
         var: hplmn_test
       when: inventory_hostname in groups['hplmn']
-
-    - name: Run VPLMN test command
-      ansible.builtin.shell: 
-        cmd: "{{ vplmn_test_command }}"
-        chdir: /root/open5gs
-      register: vplmn_test
+    
+    - name: Run VPLMN test script
+      ansible.builtin.script: "{{ vplmn_test_script }}"
+      register: hplmn_test
       when: inventory_hostname in groups['vplmn']
-      timeout: test_command_timeout
+      timeout: "{{ test_command_timeout }}"
 
     - name: Print VPLMN test command output
       ansible.builtin.debug:
