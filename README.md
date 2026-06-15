@@ -46,6 +46,7 @@ vultr_plan_id: "vc2-2c-2gb"
 
 ```
 
+1. Vultr: 
 The API key for Vultr should be provided as an environment variable with:
 `export VULTR_API_KEY=<your API key>`
 

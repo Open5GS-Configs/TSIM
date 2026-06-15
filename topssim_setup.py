@@ -35,8 +35,8 @@ class setupTOPSSIM():
         try:
             if not self._checkConfigurationValid():
                 return
-        except AttributeError:
-            print("Error present in configuration:(")
+        except AttributeError as e:
+            print(f"Error present in configuration:(\n{e}")
             return
 
         self.ansibleManager = AnsibleManager(self.config)
