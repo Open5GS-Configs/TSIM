@@ -45,7 +45,7 @@ class AnsibleManager(CommandLineManager):
 
 
     def setup(self, tags):
-        command = ["ansible-playbook", "topssim_setup.yaml", "-v"]
+        command = ["ansible-playbook", "topssim_setup.yaml", "-vv"]
         if tags and len(tags) != 0:
             command.append("--tags")
             command.append(tags[0].replace(" ", ", "))
