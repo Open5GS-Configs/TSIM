@@ -12,10 +12,12 @@ class InfrastructureManager(ABC):
 
 
     @abstractmethod
-    def populateVars(self):
+    def destroy(self):
+        pass
+    @abstractmethod
+    def readIPs(self):
         pass
 
-
     @abstractmethod
-    def destroy(self):
+    def _populateVars(self):
         pass

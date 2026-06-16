@@ -64,17 +64,13 @@ class Vagrant(InfrastructureManager, CommandLineManager):
             raise Exception("Error applying Vagrant plan") 
 
         print("\n\nSuccesfully created HPLMN and VPLMN machines!\n\n")
-        
-        res = self.runCommand(["vagrant", "ssh-config", "--machine-readable"], noOutput=True, cwd="vagrant-config")
-        if res.returncode != 0:
-            raise Exception("Error collecting VM IPs")
-        
-        self.extractIPs(res)
+
+        self.readIPs()
 
         print("\n\n Vagrant completed succesfully!")
 
 
-    def populateVars(self):
+    def _populateVars(self):
         print("Populating Vagrant Vars...")
 
         content = self.template.render(
@@ -120,7 +116,11 @@ class Vagrant(InfrastructureManager, CommandLineManager):
             raise Exception("Error destroying Vagrant VMs: " + res.stderr)
 
 
-    def extractIPs(self, res):
+    def readIPs(self, res):
+        res = self.runCommand(["vagrant", "ssh-config", "--machine-readable"], noOutput=True, cwd="vagrant-config")
+        if res.returncode != 0:
+            raise Exception("Error collecting VM IPs")
+
         plmn = ""
         ip = ""
         port = ""

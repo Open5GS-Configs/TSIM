@@ -5,6 +5,9 @@ from .CommandLineManager import CommandLineManager
 
 
 TEST_COMMAND_TIMEOUT = 120
+TEST_COMMAND_POLL_TIME = 10
+DEFAULT_MODULE = "ansible.builtin.shell"
+
 INVENTORY = """
 ---
 all:
@@ -27,7 +30,7 @@ all:
         {% endif %}
 """
 
-VALID_FUNC = ["amf", "bsf", "mme", "nssf", "pcrf", "sepp1", "sgwu", "tls", "udr", "ausf", "hss", "nrf", "pcf", "scp", "sgwc", "smf", "udm", "upf"]
+VALID_FUNC = ["amf", "bsf", "mme", "nssf", "pcrf", "sepp1", "sepp2", "sgwu", "tls", "udr", "ausf", "hss", "nrf", "pcf", "scp", "sgwc", "smf", "udm", "upf"]
 
 TESTS = {
     "registration": ["abts-main", "crash-test", "ecc-test", "guti-test", "idle-test", "multi-ue-test", "simple-test", "auth-test", "dereg-test", "gmm-status-test", "identity-test", "reset-test", "ue-context-test"],
@@ -68,6 +71,8 @@ CONFIGS = {
 class AnsibleManager(CommandLineManager):
 
     def __init__(self, config, run):
+        super().__init__()
+
         self.config = config
         self.run = run
 
@@ -86,21 +91,26 @@ class AnsibleManager(CommandLineManager):
 
 
     def setup(self, tags):
-        command = ["ansible-playbook", "topssim_setup.yaml", "-vv"]
-        if tags and len(tags) != 0:
-            command.append("--tags")
-            command.append(tags[0].replace(" ", ", "))
-        res = self.runCommand(command, cwd="ansible-setup")
-        if res.returncode != 0:
-            raise Exception("Ansible Playbook presented an error!")
+        try:
+            command = ["ansible-playbook", "topssim_setup.yaml", "-vv"]
+            if tags and len(tags) != 0:
+                command.append("--tags")
+                command.append(tags[0].replace(" ", ", "))
+            res = self.runCommand(command, cwd="ansible-setup")
+        except Exception as e:
+            import traceback
+            traceback.print_exc()
+        #if res.returncode != 0:
+        #    raise Exception("Ansible Playbook presented an error!")
 
 
     def runFileCommands(self):
         for cmd in self.run:
+            cmdKeys = cmd.keys()
             cmdTest = cmd["cmd"].split(".")
 
             if len(cmdTest) == 2 and cmdTest[0] in TESTS.keys() and cmdTest[1] in TESTS[cmdTest[0]]:
-                if "config" not in cmd.keys():
+                if "config" not in cmdKeys:
                     self._raiseMissingConfig(f"Configuration for test ({cmdTest}) was not provided")
                 else:
                     configTest = cmd["config"].split(".")
@@ -109,26 +119,46 @@ class AnsibleManager(CommandLineManager):
 
                 cmd["cmd"] = f'/root/open5gs/build/tests/{cmdTest[0]}/{cmdTest[0]} -c {cmd["config"]} {cmdTest[1]}'
 
-            self.runCommand(["ansible", cmd["where"], "-m", "ansible.builtin.shell", "-a", cmd["cmd"]], cwd="ansible-setup")
+            if "timeout" not in cmdKeys:
+                cmd["timeout"] = TEST_COMMAND_TIMEOUT
+            if "module" not in cmdKeys:
+                cmd["module"] = DEFAULT_MODULE
+            if "poll" not in cmdKeys:
+                cmd["poll"] = TEST_COMMAND_POLL_TIME
+
+            self.runCommand(["ansible", cmd["where"], "-m", cmd["module"], "-a", cmd["cmd"], "-B", str(cmd['timeout']), "-P", str(cmd["poll"])], 
+                            cwd="ansible-setup",
+                            name=f"\n[blue bold]{cmd['where'].upper()}:[/] executing [dark_orange italic]{cmd['cmd']}[/]\n")
             
-            logs = cmd["logs"].split()
-            if len(logs) != 0: 
-                if "lines" not in cmd.keys():
-                    cmd["lines"] = 10
-                if "timeout" not in cmd.keys():
-                    cmd["timeout"] = TEST_COMMAND_TIMEOUT
-            for func in cmd["logs"].split(","):
-                func.strip()
-                if func in VALID_FUNC:
-                    self.runCommand(["ansible", cmd["where"], "-m", "ansible.builtin.shell", "-a", f"tail -n {str(cmd['lines'])} /root/open5gs/install/var/log/open5gs/{func}.log", "-B", str(cmd['timeout']), "-P", "10"], cwd="ansible-setup")
+            if "logs" not in cmdKeys:
+                return 
+                
+            for func in cmd["logs"]:
+                if type(func) is dict:
+                    lines = func["lines"]
+                    f = func["func"]
                 else:
-                    self._raiseWrongConfig(f"{func} is not a valid Open5GS function")
+                    lines = 10
+                    f = func
+                if f in VALID_FUNC:
+                    self.runCommand(["ansible", cmd["where"], "-m", "ansible.builtin.shell", "-a", f"tail -n {str(lines)} /root/open5gs/install/var/log/open5gs/{f}.log"], 
+                                    cwd="ansible-setup",
+                                    name=f"\nLast [plum1]{lines}[/] lines of [dark_orange]{f.upper()}[/] logs",
+                                    titleJustify="left")
+                else:
+                    self.__raiseWrongConfig(f"{f} is not a valid Open5GS function")
+        
+        if self.config["copy_logs"]:
+            for func in VALID_FUNC:
+                self.runCommand(["ansible", "all", "-m", "ansible.builtin.fetch", "-a", f"src=/root/open5gs/install/var/log/open5gs/{func}.log dest={{{{ playbook_dir }}}}/logs-{{{{ inventory_hostname }}}}/{func}.log"], 
+                            cwd="ansible-setup",
+                            name=f"\nCopying [dark_orange italic]{func}[/] logs\n")
                     
 
     def _writeVars(self):
         res = self.runCommand(["git", "ls-remote", self.config["ogs"]["repo"]], noOutput=True) 
         if res.returncode != 0:
-            self._raiseWrongconfig("ogs_repo")
+            self.__raiseWrongConfig("ogs_repo")
         else:
             print("Open5GS repo was found!")
         
@@ -147,7 +177,7 @@ class AnsibleManager(CommandLineManager):
                     else:
                         res = self.runCommand(["git", "ls-remote", self.config[plmn][c[1]]], noOutput=True) 
                         if res.returncode != 0:
-                            self._raiseWrongconfig(plmn + c[1])
+                            self.__raiseWrongConfig(plmn + c[1])
                         else:
                             print(plmn + c[1] + " was found!")
                 
@@ -207,7 +237,7 @@ class AnsibleManager(CommandLineManager):
         return content
 
 
-    def _raiseWrongconfig(self, par):
+    def __raiseWrongConfig(self, par):
         errorMsg = f"Required paramater was provided incorrectly: {par}"
         raise Exception(errorMsg)
 

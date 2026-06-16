@@ -1,19 +1,20 @@
 #!/usr/bin/env python3
 
-from json import loads
-from pathlib import Path
 from subprocess import run
-from os import getenv
+from pathlib import Path
+from json import loads
 from time import time
+from os import getenv
 
 import argparse 
-import yaml
 import requests
+import yaml
 
 from Managers.InfrastructureManager import InfrastructureManager
+from Managers.CommandLineManager import CommandLineManager
+from Managers.AnsibleManager import AnsibleManager
 from Managers.OpenTofu import OpenTofu
 from Managers.Vagrant import Vagrant
-from Managers.AnsibleManager import AnsibleManager
 
 
 CLOUD_PROVIDERS = ["vultr"]
@@ -30,7 +31,7 @@ SEPARATOR = ' '+'='*10+' '
 DEFAULT_BRANCH = "main"
 
 
-class setupTOPSSIM():
+class setupTOPSSIM(CommandLineManager):
 
     def __init__(self, config, run):
         self.config = config
@@ -52,16 +53,15 @@ class setupTOPSSIM():
         if self.strategy == None or self.ansibleManager == None: return
 
         print("Adding Control Node's SSH key to config\n")
-        self._addAnsibleSSHKey(self.config)
+        self._addAnsibleSSHKey()
 
-        print(SEPARATOR + f"Calling {self.strategy.__class__.__name__}" + SEPARATOR)
+        self.consoleRule(f"Calling {self.strategy.__class__.__name__}")
         self.strategy.callInfManager()
 
         # now the VMs have been created and the IPs to ssh into the machines are stored within config
-        print("\n"+SEPARATOR+f"Start Ansible Configuration"+SEPARATOR+"\n\n")
+        self.consoleRule("Start Ansible Configuration")
         self.callAnsible()
-
-        print(f'\n\nThe public IPs of the VMs are:\n - HPLMN: {self.config["hplmn"]["public_ip"]}\n - VPLMN: {self.config["vplmn"]["public_ip"]}')
+        self.printVMIPs
 
 
     def destroy(self):
@@ -79,7 +79,7 @@ class setupTOPSSIM():
 
     def callAnsible(self, writeInventory=True, tags=None):
         self.ansibleManager.configure(writeInventory)
-        print("\n"+SEPARATOR+f"Start Ansible Setup in VMs"+SEPARATOR+"\n\n")
+        self.consoleRule(f"Start Ansible Setup in VMs")
          
         self.ansibleManager.setup(tags)
 
@@ -104,16 +104,27 @@ class setupTOPSSIM():
         return jsonVultrRegions
 
 
+    def printVMIPs(self):
+        if self.config["location"] == "cloud":
+            if "public_ip" not in self.config["hplmn"].keys():
+                self.strategy.readIPs()
+            print(f'\n\nThe public IPs of the VMs are:\n - HPLMN: {self.config["hplmn"]["public_ip"]}\n - VPLMN: {self.config["vplmn"]["public_ip"]}')
+        else:
+            if "port" not in self.config["hplmn"].keys():
+                self.strategy.readIPs()
+            print(f'\n\nYour VMs are available through localhost with ports:\n - HPLMN: {self.config["hplmn"]["port"]}\n - VPLMN: {self.config["vplmn"]["port"]}')
+
+
     def _checkConfigurationValid(self):
         configKeys = self.config.keys()
 
         if "VultrRegions" in configKeys:
-            regions = self.getVultrRegions(self.config['vultr_api_key'])
+            regions = self.getVultrRegions(self.config['vultr']['api_key'])
             [print(f"City: {region['city']}, ID: {region['id']}\n") for region in regions]
             return False
             
         if "VultrPlans" in configKeys:
-            plans = self.getVultrPlans(self.config['vultr_api_key'])
+            plans = self.getVultrPlans(self.config['vultr']['api_key'])
             [print(f"ID: {plan['id']}\n") for plan in plans]
             return False
             
@@ -122,7 +133,7 @@ class setupTOPSSIM():
                 print(f.read())
             return False
         
-        print(SEPARATOR + "Asserting necessary parameters" + SEPARATOR)
+        self.consoleRule("Asserting necessary parameters")
         if self.config["provider"].lower() in CLOUD_PROVIDERS:
             print("\nCloud provider Recognized!")
             self.config["location"] = "cloud"
@@ -132,8 +143,8 @@ class setupTOPSSIM():
                     if p not in self.config[plmn].keys():
                         self._raiseMissingConfig(p)
 
-            self.config["vultr_api_key"] = getenv("VULTR_API_KEY")
-            if  self.config["vultr_api_key"] == None or self.config["vultr_api_key"] == "":
+            self.config["vultr"]["api_key"] = getenv("VULTR_API_KEY")
+            if  self.config["vultr"]["api_key"] == None or self.config["vultr"]["api_key"] == "":
                 self._raiseMissingConfig("vultr_api_key")
             
             print("Checking Vultr plan availability")
@@ -150,12 +161,12 @@ class setupTOPSSIM():
                     self._raiseWrongConfig(region)
             
             if "vpc" not in self.config["vultr"].keys():
-                config["vultr"]["vpc"]["v4_subnet_mask"] = "28"
-                config["vultr"]["vpc"]["v4_subnet"] = "10.10.0.0"
+                self.config["vultr"]["vpc"]["v4_subnet_mask"] = "28"
+                self.config["vultr"]["vpc"]["v4_subnet"] = "10.10.0.0"
             elif "v4_subnet_mask" not in self.config["vultr"]["vpc"].keys():
-                config["vultr"]["vpc"]["v4_subnet_mask"] = "28"                
+                self.config["vultr"]["vpc"]["v4_subnet_mask"] = "28"                
             elif "v4_subnet" not in self.config["vultr"]["vpc"].keys():
-                config["vultr"]["vpc"]["v4_subnet"] = "10.10.0.0"
+                self.config["vultr"]["vpc"]["v4_subnet"] = "10.10.0.0"
             
             for p in VULTR_CLOUD_REQUIRED_PARAMETERS:
                 if p not in self.config["vultr"].keys():
@@ -165,6 +176,9 @@ class setupTOPSSIM():
                 if p not in self.config["vultr"]["vpc"].keys():
                     self._raiseMissingConfig(p)
 
+            self.config["hplmn"]["port"] = ""
+            self.config["vplmn"]["port"] = ""
+            
             self.strategy = OpenTofu(self.config)
 
         elif self.config["provider"].lower() in LOCAL_PROVIDERS:
@@ -213,10 +227,13 @@ class setupTOPSSIM():
             self.config["ogs"]["version"] = DEFAULT_BRANCH
 
         if "create_services" not in configKeys:
-            config["create_services"] = False
+            self.config["create_services"] = False
+
+        if "copy_logs" not in configKeys:
+            self.config["copy_logs"] = False
 
         if "user_ssh_key" not in configKeys:
-            config["user_ssh_key"] = ""
+            self.config["user_ssh_key"] = ""
         
         if "ansible_tags" not in configKeys:
             self.config["ansible_tags"] = ""
@@ -224,7 +241,7 @@ class setupTOPSSIM():
         return True
 
 
-    def _addAnsibleSSHKey(self, config):
+    def _addAnsibleSSHKey(self):
         sshConfig = Path(getenv("HOME")).joinpath(".ssh")
         privateSSHPath = sshConfig.joinpath("id_rsa")
         publicSSHPath = privateSSHPath.with_suffix(".pub")
@@ -240,7 +257,7 @@ class setupTOPSSIM():
         with open(publicSSHPath.expanduser(), "r") as f:
             ControlNodeSSHKey = f.read().strip()
         
-        config["ansible_ssh_key"] = ControlNodeSSHKey
+        self.config["ansible_ssh_key"] = ControlNodeSSHKey
 
 
     def _raiseMissingConfig(self, par):
@@ -275,6 +292,7 @@ def main():
     parser.add_argument("-up", action='store_true', help="Just creates VMs and runs very basic setup with Infrastructure Manager (OpenTofu or Vagrant)")
     parser.add_argument("-ansible", action='store_true', help="Calls Ansible to setup the VMs")
     parser.add_argument("-test", action='store_true', help="Executes the commands from the run file")
+    parser.add_argument("-ssh", action='store_true', help="Outputs the public IPs and ports used to SSH into the machines.")
 
     # These stop execution
     parser.add_argument("-VultrRegions", action='store_true', help="Shows the available regions for Vultr")
@@ -293,6 +311,7 @@ def main():
     parser.add_argument("--h_test", help="The path of the test script to be executed in the HPLMN")
     parser.add_argument("--v_test", help="The path of the test script to be executed in the VPLMN")
     parser.add_argument("--create_services", action='store_true', help="Creates service files for OGS components in /etc/system/systemd")
+    parser.add_argument("--copy_logs", action='store_true', help="Copies logs from VMs into local machine")
     parser.add_argument('--ansible_tags', nargs='+', help="Tells ansible which stages to run. Options: install_stage, config_stage, testing_stage, services_stage, ogstun, install_ogs")
 
     # Local Arguments
@@ -324,7 +343,7 @@ def main():
 
     config = apply_cli_overrides(config, args)
 
-    for flag in ("destroy", "restart", "ansible", "VultrRegions", "VultrPlans", "readme", "test", "up"):
+    for flag in ("destroy", "restart", "ansible", "VultrRegions", "VultrPlans", "readme", "test", "up", "ssh"):
         if hasattr(args, flag):
             config[flag] = getattr(args, flag)
 
@@ -332,19 +351,30 @@ def main():
 
     if "destroy" in config.keys():
         setup.destroy()
-        return
     elif "restart" in config.keys():
         setup.destroy()
+        setup.setup()
+        setup.printVMIPs()
     elif "up" in config.keys():
         setup.strategy.callInfManager()
-        return
+        setup.printVMIPs()
+    elif "ansible" in config.keys():
+        runTest = False
+        if "testing_stage" in config["ansible_tags"]:
+            runTest = True
+            config["ansible_tags"].remove("testing_stage")
+            config["ansible_tags"].append("ssh_stage")
+        setup.callAnsible(writeInventory=False, tags=config["ansible_tags"])
+        if runTest:
+            setup.ansibleManager.runFileCommands()
+        setup.printVMIPs()    
     elif "test" in config.keys():
         setup.ansibleManager.runFileCommands()
-        return
-    elif "ansible" in config.keys():
-        setup.callAnsible(writeInventory=False, tags=config["ansible_tags"])
-        return
-    setup.setup()
+        setup.printVMIPs()
+    elif "ssh" in config.keys():
+        setup.printVMIPs()
+    else:
+        setup.setup()
 
     print(f"\n\nExecution Complete!\nTime Elapsed: {(time()-start_time):.2f} seconds")
 
@@ -390,6 +420,7 @@ def apply_cli_overrides(config, args):
         "provider": ("provider",),
         "user_ssh_key": ("user_ssh_key",),
         "create_services": ("create_services",),
+        "copy_logs": ("copy_logs",),
         "ogs_repo": ("ogs", "repo"),
         "ogs_version": ("ogs", "version"),
         "hplmn_ip": ("hplmn", "private_ip"),

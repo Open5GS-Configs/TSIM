@@ -12,7 +12,7 @@ class OpenTofu(InfrastructureManager, CommandLineManager):
         super().__init__(config)
     
     def callInfManager(self):
-        self.populateVars()
+        self._populateVars()
 
         res = self.runCommand(["tofu", "-chdir=vultr-opentofu", "init"]) 
         if res.returncode != 0:
@@ -26,6 +26,18 @@ class OpenTofu(InfrastructureManager, CommandLineManager):
 
         print("\n\nSuccesfully created HPLMN and VPLMN machines!\n\n")
 
+        self.readIPs()
+
+        print("\n\n OpenTofu completed succesfully!")
+    
+    
+    def destroy(self):
+        res = self.runCommand(["tofu", "-chdir=vultr-opentofu", "destroy"]) 
+        if res.returncode != 0:
+            raise Exception("Error initiating OpenTofu")
+
+
+    def readIPs(self):
         with open("vultr-opentofu/tofu_out.json") as f:
             outFile = f.read()
             
@@ -36,16 +48,9 @@ class OpenTofu(InfrastructureManager, CommandLineManager):
             self.config["hplmn"]["public_ip"] = outJson["outputs"]["hplm_ip"]["value"]
             self.config["vplmn"]["public_ip"] = outJson["outputs"]["vplm_ip"]["value"]
 
-            print("\n\n OpenTofu completed succesfully!")
+        
 
-    
-    def destroy(self):
-        res = self.runCommand(["tofu", "-chdir=vultr-opentofu", "destroy"]) 
-        if res.returncode != 0:
-            raise Exception("Error initiating OpenTofu")
-
-            
-    def populateVars(self):
+    def _populateVars(self):
         print("Populating OpenTofu Vars...")
 
         with open(VARS_PATH, 'w') as f:

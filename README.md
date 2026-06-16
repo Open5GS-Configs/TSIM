@@ -58,28 +58,73 @@ provider: "<your VM provider>"
 
 For **Local** VMs, it is important to note that the ram is meant to be in MB and the disk in GB. Also, Vagrant automatically forwards localhost ports for ssh connections to the VMs. The default user in the VMs will be called "vagrant" and the default password is also "vagrant".
 
+### Run File
+
+A yaml file that gives commands to be executed in each machine. It is executed sequentially using Ansible ad-hoc commands. A sample file could be:
+```
+---
+- where: hplmn
+  function: udm
+  cmd: <a command>
+  logs: 
+      - func: udm
+        lines: 5
+      - func: sepp
+        lines: 100
+      
+- where: vplmn
+  function: amf
+  cmd: <another command>
+  logs: 
+      - amf
+      - udm
+      - sepp
+
+- where: vplmn
+  function: amf
+  cmd: registration.simple-test
+  config: examples.gnb-001-01-ue-999-70
+```
+
+The first task executes a command in the HPLMN and collects the last 5 logs from the UDM and the last 100 from the SEPP.
+The second task executes a command in the VPLMN and collects the default 10 last logs from the AMF, UDM, and SEPP.
+Lastly, the last task runs the simple registration test with one of the example configurations. 
+
+A timeout and polling time can also be specified with each command. The default timeout is 120 seconds and polling is 10 seconds. 
+
+The -test command line argument just runs the commands from the run file.
+
 ### Running the program
 You can call it using:
-`python3 topssim_setup.py  -c /directory/your_config_file.yaml`
+`python3 topssim_setup.py  -c /directory/your_config_file.yaml -r /directory/your_run_file.yaml`
 
 You can check other command-line options with `python3 topssim_setup.py -h`.
 
 Some examples are:
 To run just the configuration and testing stages of Ansible on already existing machines:
-`python3 topssim_setup.py -c /home/agustin/5G_Setup/config.yaml -ansible --ansible_tags "config_stage testing_stage"`
+`python3 topssim_setup.py  -c /directory/your_config_file.yaml -r /directory/your_run_file.yaml -ansible --ansible_tags "config_stage testing_stage"`
 
 It is also useful to know that OpenTofu, Vagrant, and Ansible provide CLI tools. These can be used to isolate a part of the process. Some notable commands are:
 
 1. Ansible:    
+
 `ansible all -m ping ` to test connectivity    
 `ansible-playbook topssim_setup.yaml` to run the playbook   
 `ansible-inventory --list-hosts` to see the hosts    
 `ansible-galaxy role list` to see the installed roles  
 
+- To add a SSH key passphrase to be recognized by Ansible when creating the SSH connection to the hosts:    
+Start SSH Agent:     
+`eval "$(ssh-agent -s)"`     
+And add private key:     
+`ssh-add ~/.ssh/id_rsa` 
+
+
 2. OpenTofu:   
 `tofu show`    
 `tofu state list`    
 `tofu state show vultr_vpc.sepp-link` (the address of the instances lives in _vultr-opentofu/vultr_resources.tf_)   
+
 
 3. Vagrant:
 `vagrant up`
@@ -88,15 +133,7 @@ It is also useful to know that OpenTofu, Vagrant, and Ansible provide CLI tools.
 
 ### Troubleshooting
 
-1. Ansible:      
-
-- To add a SSH key passphrase to be recognized by Ansible when creating the SSH connection to the hosts:    
-Start SSH Agent:     
-`eval "$(ssh-agent -s)"`     
-And add private key:     
-`ssh-add ~/.ssh/id_rsa`     
-
-2. If any issues are present with OpenTofu this is good to keep in mind:     
+1.  OpenTofu:     
 
 - If a resource has been deleted manually, OpenTofu will not recognize the change. It must be manually deleted from its instances.     
 This shows the states that are being tracked: `tofu state list`      
