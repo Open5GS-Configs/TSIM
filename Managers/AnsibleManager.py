@@ -3,6 +3,7 @@ import jinja2
 from pathlib import Path
 from .CommandLineManager import CommandLineManager
 
+
 TEST_COMMAND_TIMEOUT = 120
 INVENTORY = """
 ---
@@ -26,13 +27,53 @@ all:
         {% endif %}
 """
 
+VALID_FUNC = ["amf", "bsf", "mme", "nssf", "pcrf", "sepp1", "sgwu", "tls", "udr", "ausf", "hss", "nrf", "pcf", "scp", "sgwc", "smf", "udm", "upf"]
+
+TESTS = {
+    "registration": ["abts-main", "crash-test", "ecc-test", "guti-test", "idle-test", "multi-ue-test", "simple-test", "auth-test", "dereg-test", "gmm-status-test", "identity-test", "reset-test", "ue-context-test"],
+    "310014": ["abts-main", "epc-test"],
+    "app": ["5gc-init", "app-init", "epc-init"],
+    "af": ["af-sm", "init", "nnrf-handler", "sbi-path", "event", "nbsf-handler", "npcf-handler", "context", "local", "nbsf-build", "npcf-build"],
+    "attach": ["abts-main", "crash-test", "guti-test", "issues-test", "reset-test", "simple-test", "auth-test", "emm-status-test", "idle-test", "s1setup-test", "ue-context-test"],
+    "common": ["application", "emm-handler", "gmm-build", "gsm-handler", "nas-path", "ngap-handler", "s1ap-handler", "sgsap-build", "context", "esm-build", "gmm-handler", "gtpu", "nas-security", "ngap-path", "s1ap-path", "emm-build", "esm-handler", "gsm-build", "nas-encoder", "ngap-build", "s1ap-build", "sctp"],
+    "core": ["abts-main", "hash-test", "memory-test", "poll-test", "rbtree-test", "thread-test", "tlv-test", "conv-test", "list-test", "pool-test", "socket-test", "timer-test", "uuid-test", "fsm-test", "log-test", "pkbuf-test", "queue-test", "strings-test", "time-test"],
+    "crypt": ["abts-main", "aes-test", "base64-test", "ecies-test", "sha-test"],
+    "csfb": ["abts-main", "mo-idle-test", "mt-active-test", "mt-sms-test", "crash-test", "mo-active-test", "mo-sms-test", "mt-idle-test", "tau-test"],
+    "fuzzing": ["nas-message-fuzz", "gtp-message-fuzz"],
+    "handover": ["5gc-n2-test", "5gc-xn-test", "abts-main", "epc-s1-test", "epc-x2-test"],
+    "sctp": ["sctp-test"],
+    "slice": ["different-dnn-test", "paging-test", "same-dnn-test"],
+    "transfer": ["abts-error-main", "abts-main", "ue-context-transfer-error-case-test", "ue-context-transfer-test"],
+    "unit": ["abts-main", "gtp-message-test", "nas-message-test", "proto-message-test", "sbi-message-test", "crash-test", "ngap-message-test", "s1ap-message-test", "security-test"],
+    "volte": ["abts-main", "cx-test", "diameter-rx-path", "rx-test", "simple-test", "bearer-test", "diameter-cx-path", "session-test", "test-fd-path", "video-test"],
+    "vonr": ["abts-main", "af-test", "qos-flow-test", "session-test", "simple-test", "video-test"]
+}
+
+CONFIGS = {
+    "configs": {
+        "path": "",
+        "configs": ["310014", "sample", "volte", "attach", "non3gpp", "slice", "transfer-error-case", "vonr", "csfb", "srsenb", "transfer"]
+    },
+    "examples": {
+        "path": "examples/",
+        "configs": ["5gc-no-scp-sepp1-999-70", "5gc-sepp3-315-010", "gnb-001-01-ue-315-010", "gnb-999-70-ue-001-01", "5gc-no-scp-sepp2-001-01", "5gc-tls-sepp1-999-70", "gnb-001-01-ue-999-70", "gnb-999-70-ue-315-010", "5gc-no-scp-sepp3-315-010", "5gc-tls-sepp2-001-01", "gnb-315-010-ue-001-01", "gnb-999-70-ue-999-70", "5gc-sepp1-999-70", "5gc-tls-sepp3-315-010", "gnb-315-010-ue-315-010", "5gc-sepp2-001-01", "gnb-001-01-ue-001-01", "gnb-315-010-ue-999-70"]
+    },
+    "open5gs": {
+        "path": "open5gs/",
+        "configs": ["amf", "bsf", "hss", "nrf", "pcf", "scp", "sepp2", "sgwu", "udr", "ausf", "mme", "nssf", "pcrf", "sepp1", "sgwc", "smf", "udm", "upf"]
+    }
+}
+
 
 class AnsibleManager(CommandLineManager):
 
-    def __init__(self, config):
+    def __init__(self, config, run):
         self.config = config
+        self.run = run
+
         environment = jinja2.Environment()
         self.template = environment.from_string(INVENTORY)
+
 
     def configure(self, writeInventory):
         if writeInventory:
@@ -52,7 +93,37 @@ class AnsibleManager(CommandLineManager):
         res = self.runCommand(command, cwd="ansible-setup")
         if res.returncode != 0:
             raise Exception("Ansible Playbook presented an error!")
-        
+
+
+    def runFileCommands(self):
+        for cmd in self.run:
+            cmdTest = cmd["cmd"].split(".")
+
+            if len(cmdTest) == 2 and cmdTest[0] in TESTS.keys() and cmdTest[1] in TESTS[cmdTest[0]]:
+                if "config" not in cmd.keys():
+                    self._raiseMissingConfig(f"Configuration for test ({cmdTest}) was not provided")
+                else:
+                    configTest = cmd["config"].split(".")
+                    if len(configTest) == 2 and configTest[0] in CONFIGS.keys() and configTest[1] in CONFIGS[configTest[0]]["configs"]:
+                        cmd["config"] = f'/root/open5gs/build/configs/{CONFIGS[configTest[0]]["path"]}/{configTest[1]}.yaml'
+
+                cmd["cmd"] = f'/root/open5gs/build/tests/{cmdTest[0]}/{cmdTest[0]} -c {cmd["config"]} {cmdTest[1]}'
+
+            self.runCommand(["ansible", cmd["where"], "-m", "ansible.builtin.shell", "-a", cmd["cmd"]], cwd="ansible-setup")
+            
+            logs = cmd["logs"].split()
+            if len(logs) != 0: 
+                if "lines" not in cmd.keys():
+                    cmd["lines"] = 10
+                if "timeout" not in cmd.keys():
+                    cmd["timeout"] = TEST_COMMAND_TIMEOUT
+            for func in cmd["logs"].split(","):
+                func.strip()
+                if func in VALID_FUNC:
+                    self.runCommand(["ansible", cmd["where"], "-m", "ansible.builtin.shell", "-a", f"tail -n {str(cmd['lines'])} /root/open5gs/install/var/log/open5gs/{func}.log", "-B", str(cmd['timeout']), "-P", "10"], cwd="ansible-setup")
+                else:
+                    self._raiseWrongConfig(f"{func} is not a valid Open5GS function")
+                    
 
     def _writeVars(self):
         res = self.runCommand(["git", "ls-remote", self.config["ogs"]["repo"]], noOutput=True) 

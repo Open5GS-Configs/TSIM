@@ -45,7 +45,7 @@ class setupTOPSSIM():
             print(f"Error present in configuration:(\n{e}")
             return
 
-        self.ansibleManager = AnsibleManager(self.config)
+        self.ansibleManager = AnsibleManager(self.config, self.run)
 
 
     def setup(self):
@@ -272,8 +272,10 @@ def main():
     # Actions
     parser.add_argument("-destroy", action='store_true', help="Destroys all of the current VMs")
     parser.add_argument("-restart", action='store_true', help="Destroys and restarts all of the current VMs")
+    parser.add_argument("-up", action='store_true', help="Just creates VMs and runs very basic setup with Infrastructure Manager (OpenTofu or Vagrant)")
     parser.add_argument("-ansible", action='store_true', help="Calls Ansible to setup the VMs")
-    
+    parser.add_argument("-test", action='store_true', help="Executes the commands from the run file")
+
     # These stop execution
     parser.add_argument("-VultrRegions", action='store_true', help="Shows the available regions for Vultr")
     parser.add_argument("-VultrPlans", action='store_true', help="Shows the available plans for Vultr")
@@ -316,13 +318,13 @@ def main():
         print("Config file was not passed!")
     run = {}
     if hasattr(args, "run"):
-        config = parseConfig(args.run, run)
+        run = parseConfig(args.run, run)
     else:
         print("Run file was not passed!")
 
     config = apply_cli_overrides(config, args)
 
-    for flag in ("destroy", "restart", "ansible", "VultrRegions", "VultrPlans", "readme"):
+    for flag in ("destroy", "restart", "ansible", "VultrRegions", "VultrPlans", "readme", "test", "up"):
         if hasattr(args, flag):
             config[flag] = getattr(args, flag)
 
@@ -333,6 +335,12 @@ def main():
         return
     elif "restart" in config.keys():
         setup.destroy()
+    elif "up" in config.keys():
+        setup.strategy.callInfManager()
+        return
+    elif "test" in config.keys():
+        setup.ansibleManager.runFileCommands()
+        return
     elif "ansible" in config.keys():
         setup.callAnsible(writeInventory=False, tags=config["ansible_tags"])
         return
