@@ -293,8 +293,9 @@ def main():
     parser.add_argument("-ansible", action='store_true', help="Calls Ansible to setup the VMs")
     parser.add_argument("-test", action='store_true', help="Executes the commands from the run file")
     parser.add_argument("-ssh", action='store_true', help="Outputs the public IPs and ports used to SSH into the machines.")
+    parser.add_argument("-ad_hoc", action='store_true', help="Uses Ansible ad-hoc commands to execute an action in the VMs")
 
-    # These stop execution
+    # Printing (these stop execution)
     parser.add_argument("-VultrRegions", action='store_true', help="Shows the available regions for Vultr")
     parser.add_argument("-VultrPlans", action='store_true', help="Shows the available plans for Vultr")
     parser.add_argument("-readme", action='store_true', help="Prints the README")
@@ -328,6 +329,14 @@ def main():
     parser.add_argument("--vpc_v4_subnet", help="The subnet used to create the VPC betwene the VMs")
     parser.add_argument("--vpc_v4_subnet_mask", help="The mask for the VPC subnet")
 
+    # Ad Hoc Arguments
+    parser.add_argument("--w", default="all", help="Which VMs to run ad-hoc commands on (all, hplmn, or vplmn), with a default value of all")
+    parser.add_argument("--m", default="ansible.builtin.shell", help="Ansible module to run ad-hoc command (default is ansible.builtin.shell)")
+    parser.add_argument("--a", help='A string of arguments for the ad-hoc command (e.g. "ip a")')
+    parser.add_argument("--B", default=-1, help='Timeout (in seconds) for ad-hoc command')
+    parser.add_argument("--P", default=-1, help='Poll time for ad-hoc commands')
+    parser.add_argument("--v", default=-1, help='Poll time for ad-hoc commands')
+
     args = parser.parse_args()
     
     config = {}
@@ -343,22 +352,23 @@ def main():
 
     config = apply_cli_overrides(config, args)
 
-    for flag in ("destroy", "restart", "ansible", "VultrRegions", "VultrPlans", "readme", "test", "up", "ssh"):
+    for flag in ("destroy", "restart", "ansible", "VultrRegions", "VultrPlans", "readme", "test", "up", "ssh", "ad_hoc"):
         if hasattr(args, flag):
             config[flag] = getattr(args, flag)
 
     setup = setupTOPSSIM(config, run)
 
-    if "destroy" in config.keys():
+    configKeys = config.keys()
+    if "destroy" in configKeys:
         setup.destroy()
-    elif "restart" in config.keys():
+    elif "restart" in configKeys:
         setup.destroy()
         setup.setup()
         setup.printVMIPs()
-    elif "up" in config.keys():
+    elif "up" in configKeys:
         setup.strategy.callInfManager()
         setup.printVMIPs()
-    elif "ansible" in config.keys():
+    elif "ansible" in configKeys:
         runTest = False
         if "testing_stage" in config["ansible_tags"]:
             runTest = True
@@ -368,10 +378,16 @@ def main():
         if runTest:
             setup.ansibleManager.runFileCommands()
         setup.printVMIPs()    
-    elif "test" in config.keys():
+    elif "test" in configKeys:
         setup.ansibleManager.runFileCommands()
         setup.printVMIPs()
-    elif "ssh" in config.keys():
+    elif "ad_hoc" in configKeys:
+        if "arguments" not in configKeys:
+            raise Exception("Arguments missing in ad-hoc command")
+
+        name = f"\n[blue bold]{config['where'].upper()}:[/] executing ad-hoc command: [dark_orange italic]{config['arguments']}[/]\n"
+        setup.ansibleManager.runAdHocCommand(config["where"], config["module"], config["arguments"], name, config["B"], config["P"])
+    elif "ssh" in configKeys:
         setup.printVMIPs()
     else:
         setup.setup()
@@ -421,6 +437,11 @@ def apply_cli_overrides(config, args):
         "user_ssh_key": ("user_ssh_key",),
         "create_services": ("create_services",),
         "copy_logs": ("copy_logs",),
+        "w": ("where",),
+        "m": ("module",),
+        "a": ("arguments",),
+        "B": ("B",),
+        "P": ("P",),
         "ogs_repo": ("ogs", "repo"),
         "ogs_version": ("ogs", "version"),
         "hplmn_ip": ("hplmn", "private_ip"),

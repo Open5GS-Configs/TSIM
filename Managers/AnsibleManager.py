@@ -126,9 +126,8 @@ class AnsibleManager(CommandLineManager):
             if "poll" not in cmdKeys:
                 cmd["poll"] = TEST_COMMAND_POLL_TIME
 
-            self.runCommand(["ansible", cmd["where"], "-m", cmd["module"], "-a", cmd["cmd"], "-B", str(cmd['timeout']), "-P", str(cmd["poll"])], 
-                            cwd="ansible-setup",
-                            name=f"\n[blue bold]{cmd['where'].upper()}:[/] executing [dark_orange italic]{cmd['cmd']}[/]\n")
+            name = f"\n[blue bold]{cmd['where'].upper()}:[/] executing [dark_orange italic]{cmd['cmd']}[/]\n"
+            self.runAdHocCommand(cmd["where"], cmd["module"], cmd["cmd"], name, B=cmd['timeout'], P=cmd['poll'])
             
             if "logs" not in cmdKeys:
                 return 
@@ -141,19 +140,31 @@ class AnsibleManager(CommandLineManager):
                     lines = 10
                     f = func
                 if f in VALID_FUNC:
-                    self.runCommand(["ansible", cmd["where"], "-m", "ansible.builtin.shell", "-a", f"tail -n {str(lines)} /root/open5gs/install/var/log/open5gs/{f}.log"], 
-                                    cwd="ansible-setup",
-                                    name=f"\nLast [plum1]{lines}[/] lines of [dark_orange]{f.upper()}[/] logs",
-                                    titleJustify="left")
+                    name=f"\nLast [plum1]{lines}[/] lines of [dark_orange]{f.upper()}[/] logs"
+                    command=f"tail -n {str(lines)} /root/open5gs/install/var/log/open5gs/{f}.log"
+                    self.runAdHocCommand(cmd["where"], "ansible.builtin.shell", command, name, titleJustify="left")
                 else:
                     self.__raiseWrongConfig(f"{f} is not a valid Open5GS function")
         
         if self.config["copy_logs"]:
             for func in VALID_FUNC:
-                self.runCommand(["ansible", "all", "-m", "ansible.builtin.fetch", "-a", f"src=/root/open5gs/install/var/log/open5gs/{func}.log dest={{{{ playbook_dir }}}}/logs-{{{{ inventory_hostname }}}}/{func}.log"], 
-                            cwd="ansible-setup",
-                            name=f"\nCopying [dark_orange italic]{func}[/] logs\n")
+                name=f"\nCopying [dark_orange italic]{func}[/] logs\n"
+                command=f"src=/root/open5gs/install/var/log/open5gs/{func}.log dest={{{{ playbook_dir }}}}/logs-{{{{ inventory_hostname }}}}/{func}.log"
+                self.runAdHocCommand("all", "ansible.builtin.fetch", command, name)
                     
+
+    def runAdHocCommand(self, where, module, cmd, name, B=None, P=None, cwd="ansible-setup", titleJustify="center"):
+        command = ["ansible", where, "-m", module, "-a", cmd]
+        if B and B != -1:
+            command.append("-B")
+            command.append(str(B))
+        if P and P != -1:
+            command.append("-P")
+            command.append(str(P))
+
+        command.append("-v")
+        self.runCommand(command, cwd=cwd, name=name, titleJustify=titleJustify)
+
 
     def _writeVars(self):
         res = self.runCommand(["git", "ls-remote", self.config["ogs"]["repo"]], noOutput=True) 
