@@ -1,4 +1,7 @@
+#!/usr/bin/env python3
+
 from time import time
+from pathlib import Path
 
 from config import Config
 from topssim_setup import setupTOPSSIM
@@ -6,11 +9,12 @@ from topssim_setup import setupTOPSSIM
 
 def main():
     start_time = time()
+    cwd = Path(__file__).resolve().parent
 
     configManager = Config()
     config, run = configManager.createConfig()
     
-    setup = setupTOPSSIM(config, run)
+    setup = setupTOPSSIM(config, run, cwd)
 
     configKeys = config.keys()
     if "destroy" in configKeys:

@@ -31,9 +31,10 @@ DEFAULT_BRANCH = "main"
 
 class setupTOPSSIM(CommandLineManager):
 
-    def __init__(self, config, run):
+    def __init__(self, config, run, cwd):
         self.config = config
         self.run = run
+        self.cwd = cwd
 
         self.strategy = None
         self.ansibleManager = None
@@ -44,7 +45,7 @@ class setupTOPSSIM(CommandLineManager):
             print(f"Error present in configuration:(\n{e}")
             return
 
-        self.ansibleManager = AnsibleManager(self.config, self.run)
+        self.ansibleManager = AnsibleManager(self.config, self.run, self.cwd)
 
 
     def setup(self):
@@ -64,9 +65,9 @@ class setupTOPSSIM(CommandLineManager):
 
     def destroy(self):
         if self.config["provider"].lower() in CLOUD_PROVIDERS:
-            strategy = OpenTofu(self.config)
+            strategy = OpenTofu(self.config, self.cwd)
         elif self.config["provider"].lower() in LOCAL_PROVIDERS:
-            strategy = Vagrant(self.config)
+            strategy = Vagrant(self.config, self.cwd)
         else:
             raise Exception("provider not recognized. Available providers are: VirtualBox, VMWare and Vultr")
 
@@ -177,7 +178,7 @@ class setupTOPSSIM(CommandLineManager):
             self.config["hplmn"]["port"] = ""
             self.config["vplmn"]["port"] = ""
             
-            self.strategy = OpenTofu(self.config)
+            self.strategy = OpenTofu(self.config, self.cwd)
 
         elif self.config["provider"].lower() in LOCAL_PROVIDERS:
             print("\nLocal provider Recognized!")
@@ -191,7 +192,7 @@ class setupTOPSSIM(CommandLineManager):
                 if p not in self.config["vagrant"].keys():
                     self._raiseMissingConfig(p)
 
-            self.strategy = Vagrant(self.config)
+            self.strategy = Vagrant(self.config, self.cwd)
         
         else:
             raise Exception("provider not recognized. Available providers are: VirtualBox, VMWare and Vultr")

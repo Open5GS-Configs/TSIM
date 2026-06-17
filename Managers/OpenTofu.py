@@ -8,21 +8,23 @@ VARS_PATH = "vultr-opentofu/terraform.tfvars"
 
 
 class OpenTofu(InfrastructureManager, CommandLineManager):
-    def __init__(self, config):
+    def __init__(self, config, cwd):
         super().__init__(config)
+
+        self.cwd = cwd
     
     def callInfManager(self):
         self._populateVars()
 
-        res = self.runCommand(["tofu", "-chdir=vultr-opentofu", "init"]) 
+        res = self.runCommand(["tofu", f"-chdir={self.cwd / 'vultr-opentofu'}", "init"]) 
         if res.returncode != 0:
             raise Exception("Error initiating OpenTofu")
 
-        res = self.runCommand(["tofu", "-chdir=vultr-opentofu", "apply", "-auto-approve", "-show-sensitive", "-json-into=tofu_out.json"]) 
+        res = self.runCommand(["tofu", f"-chdir={self.cwd / 'vultr-opentofu'}", "apply", "-auto-approve", "-show-sensitive", "-json-into=tofu_out.json"]) 
         if res.returncode != 0:
             raise Exception("Error applying OpenTofu plan") 
         
-        # self.runCommand(["tofu", "-chdir=vultr-opentofu", "show", "-show-sensitive", "-json-into=tofu-apply.json"])
+        # self.runCommand(["tofu", f"-chdir={self.cwd / 'vultr-opentofu'}", "show", "-show-sensitive", "-json-into=tofu-apply.json"])
 
         print("\n\nSuccesfully created HPLMN and VPLMN machines!\n\n")
 
@@ -32,13 +34,13 @@ class OpenTofu(InfrastructureManager, CommandLineManager):
     
     
     def destroy(self):
-        res = self.runCommand(["tofu", "-chdir=vultr-opentofu", "destroy"]) 
+        res = self.runCommand(["tofu", f"-chdir={self.cwd / 'vultr-opentofu'}", "destroy"]) 
         if res.returncode != 0:
             raise Exception("Error initiating OpenTofu")
 
 
     def readIPs(self):
-        with open("vultr-opentofu/tofu_out.json") as f:
+        with open(self.cwd / "vultr-opentofu" / "tofu_out.json") as f:
             outFile = f.read()
             
             print("Reading OpenTofu outputs...")
@@ -53,7 +55,7 @@ class OpenTofu(InfrastructureManager, CommandLineManager):
     def _populateVars(self):
         print("Populating OpenTofu Vars...")
 
-        with open(VARS_PATH, 'w') as f:
+        with open(self.cwd / VARS_PATH, 'w') as f:
             try:
                 f.write(f'vpc_v4_subnet_mask = \"{self.config["vultr"]["vpc"]["v4_subnet_mask"]}\"\n')
                 f.write(f'vpc_v4_subnet = \"{self.config["vultr"]["vpc"]["v4_subnet"]}\"\n') 

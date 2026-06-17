@@ -70,11 +70,12 @@ CONFIGS = {
 
 class AnsibleManager(CommandLineManager):
 
-    def __init__(self, config, run):
+    def __init__(self, config, run, cwd):
         super().__init__()
 
         self.config = config
         self.run = run
+        self.cwd = cwd
 
         environment = jinja2.Environment()
         self.template = environment.from_string(INVENTORY)
@@ -83,7 +84,7 @@ class AnsibleManager(CommandLineManager):
     def configure(self, writeInventory):
         if writeInventory:
             print("Writing Inventory!")
-            with open("ansible-setup/inventory/hosts.yaml", "w") as f:
+            with open(self.cwd / "ansible-setup" / "inventory" / "hosts.yaml", "w") as f:
                 f.write(self._writeInventory())
             
         print("Writing Ansible variables!")
@@ -96,7 +97,7 @@ class AnsibleManager(CommandLineManager):
             if tags and len(tags) != 0:
                 command.append("--tags")
                 command.append(tags[0].replace(" ", ", "))
-            res = self.runCommand(command, cwd="ansible-setup")
+            res = self.runCommand(command, cwd=(self.cwd / "ansible-setup"))
         except Exception as e:
             import traceback
             traceback.print_exc()
@@ -157,7 +158,7 @@ class AnsibleManager(CommandLineManager):
                 self.__raiseWrongConfig(f"{f} is not a valid Open5GS function")
 
 
-    def runAdHocCommand(self, where, module, cmd, name, B=None, P=None, cwd="ansible-setup", titleJustify="center"):
+    def runAdHocCommand(self, where, module, cmd, name, B=None, P=None, cwd=None, titleJustify="center"):
         command = ["ansible", where, "-m", module, "-a", cmd]
         if B and B != -1:
             command.append("-B")
@@ -165,7 +166,8 @@ class AnsibleManager(CommandLineManager):
         if P and P != -1:
             command.append("-P")
             command.append(str(P))
-
+        if not cwd:
+            cwd = self.cwd / "ansible-setup"
         command.append("-v")
         self.runCommand(command, cwd=cwd, name=name, titleJustify=titleJustify)
 
@@ -177,12 +179,12 @@ class AnsibleManager(CommandLineManager):
         else:
             print("Open5GS repo was found!")
         
-        with open("ansible-setup/roles/Open5GS Setup/vars/main.yml", "w") as f:
+        with open(self.cwd / "ansible-setup" / "roles" / "Open5GS Setup" / "vars" / "main.yml", "w") as f:
             f.write(f"ogs_repo: {self.config['ogs']['repo']}\n")
             f.write(f"ogs_version: {self.config['ogs']['version']}")
         
         for plmn in ["hplmn", "vplmn"]:
-            with open(f"ansible-setup/inventory/group_vars/{plmn}.yaml", "w") as f:
+            with open(self.cwd / "ansible-setup" / "inventory" / "group_vars" / f"{plmn}.yaml", "w") as f:
                 f.write(f"private_ip: {self.config[plmn]['private_ip']}\n")
                 
                 for c in [["config_path", "config_repo"], ["hosts_path", "hosts_repo"]]:
@@ -207,8 +209,8 @@ class AnsibleManager(CommandLineManager):
         # a.) make changes to the master file in /etc/cloud/templates/hosts.debian.tmpl
         This var makes it so that the hosts file is written at that address
         '''
-        with open("ansible-setup/roles/Open5GS Config/vars/main.yml", "w") as f:
-            with open("ansible-setup/roles/Netplan Config/vars/main.yml", "w") as g:
+        with open(self.cwd / "ansible-setup" / "roles" / "Open5GS Config" / "vars" / "main.yml", "w") as f:
+            with open(self.cwd / "ansible-setup" / "roles" / "Netplan Config" / "vars" / "main.yml", "w") as g:
                 if self.config["provider"].lower() == "vultr":
                     self.config["provider"] = "vultr"
                     self.config["dest_netplan_path"] = "/etc/netplan/50-cloud-init.yaml"
@@ -223,7 +225,7 @@ class AnsibleManager(CommandLineManager):
                 
         if "create_services" not in self.config.keys():
             self.config["create_services"] = "true"
-        with open("ansible-setup/vars/vars.yaml", "w") as f:
+        with open(self.cwd / "ansible-setup" / "vars" / "vars.yaml", "w") as f:
             f.write("---\n")
             f.write("vplmn_test_script: "  + f'{self.config["vplmn"]["test_script"]}' + "\n")
             f.write("hplmn_test_script: "  + f'{self.config["hplmn"]["test_script"]}' + "\n")

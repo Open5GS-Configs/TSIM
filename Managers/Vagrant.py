@@ -51,10 +51,13 @@ vplmn:
 
 
 class Vagrant(InfrastructureManager, CommandLineManager):
-    def __init__(self, config):
+    def __init__(self, config, cwd):
         super().__init__(config)
+
         environment = jinja2.Environment()
         self.template = environment.from_string(VARS)
+
+        self.cwd = cwd
 
 
     def callInfManager(self):
@@ -98,7 +101,7 @@ class Vagrant(InfrastructureManager, CommandLineManager):
             v_hosts_repo=self.config["vplmn"]["hosts_repo"]
         )
 
-        with open(VARS_PATH, 'w') as f:
+        with open(self.cwd / VARS_PATH, 'w') as f:
             f.write(content)
         
         print("Vars created successfully!")
