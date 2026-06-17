@@ -130,28 +130,32 @@ class AnsibleManager(CommandLineManager):
             self.runAdHocCommand(cmd["where"], cmd["module"], cmd["cmd"], name, B=cmd['timeout'], P=cmd['poll'])
             
             if "logs" not in cmdKeys:
-                return 
+                continue 
                 
-            for func in cmd["logs"]:
-                if type(func) is dict:
-                    lines = func["lines"]
-                    f = func["func"]
-                else:
-                    lines = 10
-                    f = func
-                if f in VALID_FUNC:
-                    name=f"\nLast [plum1]{lines}[/] lines of [dark_orange]{f.upper()}[/] logs"
-                    command=f"tail -n {str(lines)} /root/open5gs/install/var/log/open5gs/{f}.log"
-                    self.runAdHocCommand(cmd["where"], "ansible.builtin.shell", command, name, titleJustify="left")
-                else:
-                    self.__raiseWrongConfig(f"{f} is not a valid Open5GS function")
+            self.getLogs(cmd["where"], cmd["logs"])
         
         if self.config["copy_logs"]:
             for func in VALID_FUNC:
                 name=f"\nCopying [dark_orange italic]{func}[/] logs\n"
                 command=f"src=/root/open5gs/install/var/log/open5gs/{func}.log dest={{{{ playbook_dir }}}}/logs-{{{{ inventory_hostname }}}}/{func}.log"
                 self.runAdHocCommand("all", "ansible.builtin.fetch", command, name)
-                    
+
+
+    def getLogs(self, where, components, lines=10):
+        for func in components:
+            numLines = lines
+            if type(func) is dict:
+                numLines = func["lines"]
+                f = func["func"]
+            else:
+                f = func
+            if f in VALID_FUNC:
+                name=f"\nLast [plum1]{numLines}[/] lines of [dark_orange]{f.upper()}[/] logs from [blue bold]{where.upper()}:[/]"
+                command=f"tail -n {str(numLines)} /root/open5gs/install/var/log/open5gs/{f}.log"
+                self.runAdHocCommand(where, "ansible.builtin.shell", command, name, titleJustify="left")
+            else:
+                self.__raiseWrongConfig(f"{f} is not a valid Open5GS function")
+
 
     def runAdHocCommand(self, where, module, cmd, name, B=None, P=None, cwd="ansible-setup", titleJustify="center"):
         command = ["ansible", where, "-m", module, "-a", cmd]
@@ -217,7 +221,6 @@ class AnsibleManager(CommandLineManager):
                 
                 g.write("dest_netplan_path: "  + f'\"{self.config["dest_netplan_path"]}\"' + "\n")
                 
-
         if "create_services" not in self.config.keys():
             self.config["create_services"] = "true"
         with open("ansible-setup/vars/vars.yaml", "w") as f:
@@ -251,6 +254,3 @@ class AnsibleManager(CommandLineManager):
     def __raiseWrongConfig(self, par):
         errorMsg = f"Required paramater was provided incorrectly: {par}"
         raise Exception(errorMsg)
-
-    
-    

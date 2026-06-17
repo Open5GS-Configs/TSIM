@@ -231,3 +231,4 @@ config_vultr.yaml
 vagrant-config/.vagrant
 config_vultr.yaml
 .vagrant
+ansible-setup/inventory/hosts.yaml

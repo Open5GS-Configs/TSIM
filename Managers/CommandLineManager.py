@@ -18,7 +18,7 @@ class CommandLineManager():
             console.rule(name, align=titleJustify)
         else:
             console.rule("Running: "+commandName)
-        console.print("\n\n")
+        console.print("\n")
         
         start_time = time()
         res = run(command, input=input, capture_output=noOutput, text=noOutput, cwd=cwd)
