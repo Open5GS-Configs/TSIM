@@ -1,5 +1,6 @@
 import jinja2
 
+from yaml import dump
 from pathlib import Path
 from .CommandLineManager import CommandLineManager
 
@@ -66,7 +67,6 @@ CONFIGS = {
         "configs": ["amf", "bsf", "hss", "nrf", "pcf", "scp", "sepp2", "sgwu", "udr", "ausf", "mme", "nssf", "pcrf", "sepp1", "sgwc", "smf", "udm", "upf"]
     }
 }
-
 
 class AnsibleManager(CommandLineManager):
 
@@ -211,14 +211,21 @@ class AnsibleManager(CommandLineManager):
         '''
         with open(self.cwd / "ansible-setup" / "roles" / "Open5GS Config" / "vars" / "main.yml", "w") as f:
             with open(self.cwd / "ansible-setup" / "roles" / "Netplan Config" / "vars" / "main.yml", "w") as g:
+                print(self.config["provider"])
                 if self.config["provider"].lower() == "vultr":
-                    self.config["provider"] = "vultr"
                     self.config["dest_netplan_path"] = "/etc/netplan/50-cloud-init.yaml"
                     
                     g.write("vpc_v4_subnet_mask: "  + f'\"{self.config["vultr"]["vpc"]["v4_subnet_mask"]}\"' + "\n")
                 else:
                     self.config["dest_netplan_path"] = "/etc/netplan/50-vagrant.yaml"
-                
+                    
+                    if "use_netem" in self.config["vagrant"].keys() and self.config["vagrant"]["use_netem"]:
+                        netemConfig = {"netem": self.config["vagrant"]["netem"]}
+                        f.write(dump(netemConfig))
+                        f.write("use_netem: true")
+                    else:
+                        f.write("use_netem: false")
+
                 f.write("provider: " + self.config["provider"])
                 
                 g.write("dest_netplan_path: "  + f'\"{self.config["dest_netplan_path"]}\"' + "\n")
