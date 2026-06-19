@@ -53,7 +53,7 @@ vagrant:
 
 create_services: <(true or false) creates service files in /etc/systemd/system and enables all components to run at boot>
 user_ssh_key: "<SSH key of the user>"
-provider: "<your VM provider>"
+provider: "<your VM provider (can either be Vultr, VB or VMWare)>"
 ```
 
 For **Local** VMs, it is important to note that the ram is meant to be in MB and the disk in GB. Also, Vagrant automatically forwards localhost ports for ssh connections to the VMs. The default user in the VMs will be called "vagrant" and the default password is also "vagrant".

@@ -15,7 +15,7 @@ hplmn:
   
     use_hosts_path: True
   
-    hosts_path: /home/agustin/hosts/hplmn/hosts
+    hosts_path: /home/aeeguiguren/Documents/hosts/hplmn/hosts
   
   
 
@@ -28,5 +28,7 @@ vplmn:
   
     use_hosts_path: True
   
-    hosts_path: /home/agustin/hosts/vplmn/hosts
+    hosts_path: /home/aeeguiguren/Documents/hosts/vplmn/hosts
   
+
+provider: vb

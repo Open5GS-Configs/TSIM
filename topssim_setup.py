@@ -17,7 +17,7 @@ from Managers.AnsibleManager import AnsibleManager
 
 
 CLOUD_PROVIDERS = ["vultr"]
-LOCAL_PROVIDERS = ["vb", "vbox", "virtual box", "virtualbox", "vmware", "vm ware"]
+LOCAL_PROVIDERS = ["vb", "vmware"]
 
 COMMON_REQUIRED_PARAMETERS = ["ogs", "hplmn", "vplmn", "provider"]
 LOCAL_REQUIRED_PARAMETERS = ["vagrant"]
@@ -170,6 +170,7 @@ class setupTOPSSIM():
         elif self.config["provider"].lower() in LOCAL_PROVIDERS:
             print("\nLocal provider Recognized!")
             self.config["location"] = "local"
+            self.config["provider"] = self.config["provider"].lower()
 
             for p in LOCAL_REQUIRED_PARAMETERS:
                 if p not in configKeys:
@@ -316,7 +317,7 @@ def main():
         print("Config file was not passed!")
     run = {}
     if hasattr(args, "run"):
-        config = parseConfig(args.run, run)
+        run = parseConfig(args.run, run)
     else:
         print("Run file was not passed!")
 
