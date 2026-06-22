@@ -1,6 +1,3 @@
-<<<<<<< Updated upstream
-provider: vultr
-=======
 netem:
   corrupt: 1%
   delay:
@@ -19,4 +16,3 @@ netem:
 
 use_netem: true
 provider: vmware
->>>>>>> Stashed changes

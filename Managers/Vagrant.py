@@ -48,6 +48,9 @@ vplmn:
   {% else %}
     hosts_repo: {{ v_hosts_repo }}
   {% endif %}
+
+provider: {{ provider }}
+
 """
 
 
@@ -78,6 +81,7 @@ class Vagrant(InfrastructureManager, CommandLineManager):
         print("Populating Vagrant Vars...")
 
         content = self.template.render(
+            provider=self.config["provider"],
             memory=self.config["vagrant"]["ram"],
             disk=self.config["vagrant"]["disk"],
             cpu=self.config["vagrant"]["cpu"],
@@ -118,7 +122,7 @@ class Vagrant(InfrastructureManager, CommandLineManager):
     def destroy(self):
         res = self.runCommand(["vagrant", "destroy"],  cwd=(self.cwd / "vagrant-config")) 
         if res.returncode != 0:
-            raise Exception("Error destroying Vagrant VMs: " + res.stderr)
+            raise Exception("Error destroying Vagrant VMs: ")
 
 
     def readIPs(self):

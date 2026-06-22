@@ -16,7 +16,7 @@ from Managers.Vagrant import Vagrant
 
 
 CLOUD_PROVIDERS = ["vultr"]
-LOCAL_PROVIDERS = ["vb", "vbox", "virtual box", "virtualbox", "vmware", "vm ware"]
+LOCAL_PROVIDERS = ["vb", "vmware"]
 
 COMMON_REQUIRED_PARAMETERS = ["ogs", "hplmn", "vplmn", "provider"]
 LOCAL_REQUIRED_PARAMETERS = ["vagrant"]
@@ -199,6 +199,7 @@ class setupTOPSSIM(CommandLineManager):
         elif self.config["provider"] in LOCAL_PROVIDERS:
             print("\nLocal provider Recognized!")
             self.config["location"] = "local"
+            self.config["provider"] = self.config["provider"].lower()
 
             for p in LOCAL_REQUIRED_PARAMETERS:
                 if p not in configKeys:

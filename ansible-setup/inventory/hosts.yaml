@@ -7,22 +7,11 @@ all:
     hplmn:  
       hosts:
         hplmn_node_1: 
-<<<<<<< Updated upstream
           ansible_host: 155.138.136.15
-=======
-          ansible_host: 127.0.0.1
-        
-          ansible_port: 2222
->>>>>>> Stashed changes
+
         
     vplmn:  
       hosts:
         vplmn_node_1:
-<<<<<<< Updated upstream
           ansible_host: 155.138.130.140
-=======
-          ansible_host: 127.0.0.1
-        
-          ansible_port: 2200
->>>>>>> Stashed changes
         
