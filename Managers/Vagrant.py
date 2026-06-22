@@ -108,19 +108,19 @@ class Vagrant(InfrastructureManager, CommandLineManager):
 
 
     def provision(self):
-        res = self.runCommand(["vagrant", "provision"], cwd="vagrant-config") 
+        res = self.runCommand(["vagrant", "provision"],  cwd=(self.cwd / "vagrant-config")) 
         if res.returncode != 0:
             raise Exception("Error in provisioning with Vagrant: " + res.stderr)
 
 
     def destroy(self):
-        res = self.runCommand(["vagrant", "destroy"], cwd="vagrant-config") 
+        res = self.runCommand(["vagrant", "destroy"],  cwd=(self.cwd / "vagrant-config")) 
         if res.returncode != 0:
             raise Exception("Error destroying Vagrant VMs: " + res.stderr)
 
 
     def readIPs(self):
-        res = self.runCommand(["vagrant", "ssh-config", "--machine-readable"], noOutput=True, cwd="vagrant-config")
+        res = self.runCommand(["vagrant", "ssh-config", "--machine-readable"], noOutput=True,  cwd=(self.cwd / "vagrant-config"))
         if res.returncode != 0:
             raise Exception("Error collecting VM IPs")
 

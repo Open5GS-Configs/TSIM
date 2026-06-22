@@ -37,6 +37,7 @@ vplmn:
   private_ip: "<IP for private network>"
   region: "<region for VPLMN>"
 
+################# If using Cloud VM Provider #################
 vultr:
   vpc:
     v4_subnet: "<subnet for private network>"
@@ -45,12 +46,33 @@ vultr:
   hplmn_region: "<region for HPLMN>"
   vplmn_region: "<region for VPLMN>"
   plan_id: "<plan used for machines>"
+##############################################################
 
+################# If using Local VM Provider #################
 vagrant:
   ram: <RAM to be allocated to each VM (in MB)>
   cpu: <CPU cores to be allocated to each VM>
   disk: <Disk size of each VM (in GB)>
 
+  use_netem: <adds network emulation for local testing>
+  netem: <the following are example values>
+    delay: 
+      time: 100ms 
+      jitter: 10ms
+      correlation: 25%
+    distribution: normal
+    loss: 2% # % assumes random model
+    corrupt: 1%
+    duplicate: 1%
+    gap: 5
+    rate:
+      rate: 5kbit
+      packetoverheard: 20
+      cellsize: 100
+      celloverhead: 5
+##############################################################
+
+###################### General Settings ######################
 create_services: <(true or false) creates service files in /etc/systemd/system and enables all components to run at boot>
 user_ssh_key: "<SSH key of the user>"
 provider: "<your VM provider>"

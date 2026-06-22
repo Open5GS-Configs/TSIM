@@ -1,18 +1,1 @@
-netem:
-  corrupt: 1%
-  delay:
-    correlation: 25%
-    jitter: 10ms
-    time: 100ms
-  distribution: normal
-  duplicate: 1%
-  gap: 5
-  loss: 2%
-  rate:
-    celloverhead: 5
-    cellsize: 100
-    packetoverheard: 20
-    rate: 5kbit
-
-use_netem: true
-provider: vb
+provider: vultr

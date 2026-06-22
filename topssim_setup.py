@@ -139,6 +139,10 @@ class setupTOPSSIM(CommandLineManager):
         elif "readme" in configKeys:
             return False
 
+        for p in COMMON_REQUIRED_PARAMETERS:
+            if p not in configKeys:
+                self._raiseMissingConfig(p)
+
         self.consoleRule("Asserting necessary parameters")
         self.config["provider"] = self.config["provider"].lower()
         if self.config["provider"] in CLOUD_PROVIDERS:
@@ -151,7 +155,7 @@ class setupTOPSSIM(CommandLineManager):
                         self._raiseMissingConfig(p)
 
             self.config["vultr"]["api_key"] = getenv("VULTR_API_KEY")
-            if  self.config["vultr"]["api_key"] == None or self.config["vultr"]["api_key"] == "":
+            if self.config["vultr"]["api_key"] == None or self.config["vultr"]["api_key"] == "":
                 self._raiseMissingConfig("vultr_api_key")
             
             print("Checking Vultr plan availability")
@@ -204,10 +208,6 @@ class setupTOPSSIM(CommandLineManager):
         
         else:
             raise Exception("provider not recognized. Available providers are: VirtualBox, VMWare and Vultr")
-
-        for p in COMMON_REQUIRED_PARAMETERS:
-            if p not in configKeys:
-                self._raiseMissingConfig(p)
 
         for plmn in ["hplmn", "vplmn"]:
             plmnKeys = self.config[plmn].keys()
