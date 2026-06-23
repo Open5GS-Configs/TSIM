@@ -11,6 +11,7 @@
 - name: Installation Stage
   hosts: all
   tags: install_stage
+  any_errors_fatal: yes
   roles:
     - MongoDB Install
     - Open5GS Setup
@@ -21,6 +22,7 @@
 - name: Configuration Stage
   hosts: all
   tags: config_stage
+  any_errors_fatal: yes
   roles:
     - Open5GS Config
     - role: Netplan Config
@@ -34,6 +36,7 @@
 - name: Create Services
   hosts: all
   tags: services_stage
+  any_errors_fatal: yes
   vars_files:
     - vars/vars.yaml
   roles: 

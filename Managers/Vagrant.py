@@ -85,7 +85,6 @@ class Vagrant(InfrastructureManager, CommandLineManager):
             memory=self.config["vagrant"]["ram"],
             disk=self.config["vagrant"]["disk"],
             cpu=self.config["vagrant"]["cpu"],
-            provider=self.config["provider"],
             ansible_tags=self.config["ansible_tags"],
             ansible_ssh_key=self.config["ansible_ssh_key"],
             user_ssh_key=self.config["user_ssh_key"],

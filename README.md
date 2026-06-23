@@ -14,7 +14,6 @@ Notes for VMWare:
     - Before creating the VMs, in the control panel for VMware a Host-only network needs to be created with DHCP disabled with the adapter name "vmnet5" to create the private connection between VMs
 
 
-
 It clones and builds an Open5GS repo into /root/open5gs/ and copies the specified config files into /root/open5gs/install/etc/open5gs/ (the config files need to take this into account for pathing).
 
 <img src="/img/diagram.png" width="75%">
@@ -167,3 +166,5 @@ And add private key:
 This shows the states that are being tracked: `tofu state list`      
 If the instance deleted is still there, you can remove it with: `tofu state rm vultr_vpc.sepp-link` (instead of `vultr_vpc.sepp-link` insert your instance's address).     
 
+2. Vagrant
+If a machine times out during boot, especially when being created, it can signify a problem in the communication to that machine. Sometimes the box has been created but it does not connect. The best way to deal with this is to run the -restart command, which destroys and recreates the machines. 

@@ -1,0 +1,27 @@
+Screen {
+    layout: horizontal;
+}
+
+#mainOutput {
+    width: 50%;
+    background: black;
+    border: solid white;
+}
+
+.right-column {
+    width: 50%;
+    layout: vertical;
+}
+
+#header {
+    height: auto;
+}
+
+#left-pane {
+    height: 1fr;
+}
+
+.child-log {
+    border: solid pink;
+    padding: 1 2;
+}
