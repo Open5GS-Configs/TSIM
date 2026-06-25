@@ -3,15 +3,15 @@
 The purpose of this project is to create a reproducible environment for testing 5G core performance within the TOPSSIM project. It uses a number of tools to automate the creation and configuration of virtual machines used for testing. Currently, it creates two VMs, one per PLMN. This could be extended to create a VM per component, connecting each VM through a private network and running only its particular function in the future. 
 
 This project uses:
-    - A Python script for parsing arguments and connecting different tools together
-    - [Ansible](https://docs.ansible.com/projects/ansible/latest/installation_guide/intro_installation.html#installing-and-upgrading-ansible-with-pip) to install dependencies, bring Open5GS configurations, and run tests
-    - [OpenTofu](https://opentofu.org/docs/intro/install/deb/#step-by-step-instructions) to create and initially configure cloud VMs (provided by Vultr)
-    - [Vagrant](https://developer.hashicorp.com/vagrant/install#linux) to create and configure local VMs (provided by VirtualBox and VMWare). To control the disk size of the VMs, it is also necessary to install a plugin with the following command: `vagrant plugin install vagrant-disksize`
+    <br>- A Python script for parsing arguments and connecting different tools together
+    <br>- [Ansible](https://docs.ansible.com/projects/ansible/latest/installation_guide/intro_installation.html#installing-and-upgrading-ansible-with-pip) to install dependencies, bring Open5GS configurations, and run tests
+    <br>- [OpenTofu](https://opentofu.org/docs/intro/install/deb/#step-by-step-instructions) to create and initially configure cloud VMs (provided by Vultr)
+    <br>- [Vagrant](https://developer.hashicorp.com/vagrant/install#linux) to create and configure local VMs (provided by VirtualBox and VMWare). To control the disk size of the VMs, it is also necessary to install a plugin with the following command: `vagrant plugin install vagrant-disksize`
 
 
 Notes for VMWare:
-    - For use with VMWare, a plugin needs to be installed [here](https://developer.hashicorp.com/vagrant/install/vmware).
-    - Before creating the VMs, in the control panel for VMware a Host-only network needs to be created with DHCP disabled with the adapter name "vmnet5" to create the private connection between VMs
+    <br>- For use with VMWare, a plugin needs to be installed [here](https://developer.hashicorp.com/vagrant/install/vmware).
+    <br>- Before creating the VMs, in the control panel for VMware a Host-only network needs to be created with DHCP disabled with the adapter name "vmnet5" to create the private connection between VMs
 
 
 It clones and builds an Open5GS repo into /root/open5gs/ and copies the specified config files into /root/open5gs/install/etc/open5gs/ (the config files need to take this into account for pathing).
