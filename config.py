@@ -39,7 +39,7 @@ class Config(CommandLineManager):
 
         config = self.apply_cli_overrides(config, self.args)
 
-        for flag in ("destroy", "restart", "ansible", "vultr_regions", "vultr_plans", "readme", "test", "up", "ssh", "ad_hoc", "log"):
+        for flag in ("destroy", "restart", "ansible", "vultr_regions", "vultr_plans", "readme", "test", "up", "ssh", "ad_hoc", "log", "tui"):
             if hasattr(self.args, flag):
                 config[flag] = getattr(self.args, flag)
 
@@ -84,6 +84,7 @@ class Config(CommandLineManager):
     def apply_cli_overrides(self, config, args):
         # Map CLI argument names to nested config paths
         overrides = {
+            "tui": ("tui",),
             "provider": ("provider",),
             "user_ssh_key": ("user_ssh_key",),
             "create_services": ("create_services",),
@@ -141,6 +142,7 @@ class Config(CommandLineManager):
         # General Arguments
         self.parser.add_argument("-c", "--config", help="Gives the path to the config file that outlines all of the information necessary to configure the VMs")
         self.parser.add_argument("-r", "--run", help="Gives the path to the a file that describes a sequence of commands to be run in the VMs")
+        self.parser.add_argument("--tui", action='store_true', help="Gives the option to run a TUI that displays some logs alongside test execution")
         self.parser.add_argument("--provider", help="The VM provider that is used (Vultr, VirtualBox, VMWare, QEMU)")
         self.parser.add_argument("--ogs_repo", help="The Open5GS repo that is installed to the VMs")
         self.parser.add_argument("--ogs_version", help="The version (branch) of the Open5GS repo that is cloned")

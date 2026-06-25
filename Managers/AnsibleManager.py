@@ -59,11 +59,11 @@ CONFIGS = {
         "configs": ["310014", "sample", "volte", "attach", "non3gpp", "slice", "transfer-error-case", "vonr", "csfb", "srsenb", "transfer"]
     },
     "examples": {
-        "path": "examples/",
+        "path": "examples",
         "configs": ["5gc-no-scp-sepp1-999-70", "5gc-sepp3-315-010", "gnb-001-01-ue-315-010", "gnb-999-70-ue-001-01", "5gc-no-scp-sepp2-001-01", "5gc-tls-sepp1-999-70", "gnb-001-01-ue-999-70", "gnb-999-70-ue-315-010", "5gc-no-scp-sepp3-315-010", "5gc-tls-sepp2-001-01", "gnb-315-010-ue-001-01", "gnb-999-70-ue-999-70", "5gc-sepp1-999-70", "5gc-tls-sepp3-315-010", "gnb-315-010-ue-315-010", "5gc-sepp2-001-01", "gnb-001-01-ue-001-01", "gnb-315-010-ue-999-70"]
     },
     "open5gs": {
-        "path": "open5gs/",
+        "path": "open5gs",
         "configs": ["amf", "bsf", "hss", "nrf", "pcf", "scp", "sepp2", "sgwu", "udr", "ausf", "mme", "nssf", "pcrf", "sepp1", "sgwc", "smf", "udm", "upf"]
     }
 }
@@ -108,8 +108,11 @@ class AnsibleManager(CommandLineManager):
     def runFileCommands(self):
         for cmd in self.run:
             cmdKeys = cmd.keys()
-            cmdTest = cmd["cmd"].split(".")
 
+            if "where" not in cmdKeys:
+                continue
+
+            cmdTest = cmd["cmd"].split(".")
             if len(cmdTest) == 2 and cmdTest[0] in TESTS.keys() and cmdTest[1] in TESTS[cmdTest[0]]:
                 if "config" not in cmdKeys:
                     self._raiseMissingConfig(f"Configuration for test ({cmdTest}) was not provided")

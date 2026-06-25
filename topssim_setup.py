@@ -59,7 +59,7 @@ class setupTOPSSIM(CommandLineManager):
 
         # now the VMs have been created and the IPs to ssh into the machines are stored within config
         self.consoleRule("Start Ansible Configuration")
-        self.callAnsible()
+        self.callAnsible(self.config["ansible_tags"])
 
         self.ConsoleRule("Run File Execution")
         self.ansibleManager.runFileCommands()
@@ -80,7 +80,7 @@ class setupTOPSSIM(CommandLineManager):
         return False
 
 
-    def callAnsible(self, writeInventory=True, tags=None):
+    def callAnsible(self, tags, writeInventory=True):
         self.ansibleManager.configure(writeInventory)
         self.consoleRule(f"Start Ansible Setup in VMs")
          

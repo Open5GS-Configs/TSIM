@@ -5,6 +5,7 @@ from pathlib import Path
 
 from config import Config
 from topssim_setup import setupTOPSSIM
+from tui.tui import TSim
 
 
 def main():
@@ -29,6 +30,11 @@ def main():
     elif "up" in configKeys:
         setup.strategy.callInfManager()
         setup.printVMIPs()
+
+    elif "tui" in configKeys:
+        app = TSim(config, run, cwd)
+        print(type(app))
+        app.run()
 
     elif "ansible" in configKeys:
         runTest = False
@@ -70,6 +76,11 @@ def main():
         setup.printReadme()
     
     else:
+        if "testing_stage" in config["ansible_tags"]:
+            runTest = True
+            config["ansible_tags"].remove("testing_stage")
+            config["ansible_tags"].append("ssh_stage")
+        
         setup.setup()
 
     print(f"\n\nExecution Complete!\nTime Elapsed: {(time()-start_time):.2f} seconds")
