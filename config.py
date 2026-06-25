@@ -39,7 +39,7 @@ class Config(CommandLineManager):
 
         config = self.apply_cli_overrides(config, self.args)
 
-        for flag in ("destroy", "restart", "ansible", "vultr_regions", "vultr_plans", "readme", "test", "up", "ssh", "ad_hoc", "log"):
+        for flag in ("destroy", "restart", "ansible", "vultr_regions", "vultr_plans", "readme", "test", "up", "ssh", "ad_hoc", "log", "tui"):
             if hasattr(self.args, flag):
                 config[flag] = getattr(self.args, flag)
 
@@ -84,6 +84,7 @@ class Config(CommandLineManager):
     def apply_cli_overrides(self, config, args):
         # Map CLI argument names to nested config paths
         overrides = {
+            "tui": ("tui",),
             "provider": ("provider",),
             "user_ssh_key": ("user_ssh_key",),
             "create_services": ("create_services",),
@@ -99,8 +100,6 @@ class Config(CommandLineManager):
             "ogs_version": ("ogs", "version"),
             "hplmn_ip": ("hplmn", "private_ip"),
             "vplmn_ip": ("vplmn", "private_ip"),
-            "h_test": ("hplmn", "test_script"),
-            "v_test": ("vplmn", "test_script"),
             "h_region": ("vultr", "hplmn_region"),
             "v_region": ("vultr", "vplmn_region"),
             "vultr_plan_id": ("vultr", "plan_id"),
@@ -141,14 +140,13 @@ class Config(CommandLineManager):
         # General Arguments
         self.parser.add_argument("-c", "--config", help="Gives the path to the config file that outlines all of the information necessary to configure the VMs")
         self.parser.add_argument("-r", "--run", help="Gives the path to the a file that describes a sequence of commands to be run in the VMs")
+        self.parser.add_argument("--tui", action='store_true', help="Gives the option to run a TUI that displays some logs alongside test execution")
         self.parser.add_argument("--provider", help="The VM provider that is used (Vultr, VirtualBox, VMWare, QEMU)")
         self.parser.add_argument("--ogs_repo", help="The Open5GS repo that is installed to the VMs")
         self.parser.add_argument("--ogs_version", help="The version (branch) of the Open5GS repo that is cloned")
         self.parser.add_argument("--user_ssh_key", help="An ssh key automatically added to the authorized keys in the VMs")
         self.parser.add_argument("--hplmn_ip", help="The VPC ip of the home network")
         self.parser.add_argument("--vplmn_ip", help="The VPC ip of the visited network")
-        self.parser.add_argument("--h_test", help="The path of the test script to be executed in the HPLMN")
-        self.parser.add_argument("--v_test", help="The path of the test script to be executed in the VPLMN")
         self.parser.add_argument("--create_services", action='store_true', help="Creates service files for OGS components in /etc/system/systemd")
         self.parser.add_argument("--copy_logs", action='store_true', help="Copies logs from VMs into local machine")
         self.parser.add_argument('--ansible_tags', nargs='+', help="Tells ansible which stages to run. Options: install_stage, config_stage, testing_stage, services_stage, ogstun, install_ogs")

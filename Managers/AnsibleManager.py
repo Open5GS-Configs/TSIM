@@ -59,11 +59,11 @@ CONFIGS = {
         "configs": ["310014", "sample", "volte", "attach", "non3gpp", "slice", "transfer-error-case", "vonr", "csfb", "srsenb", "transfer"]
     },
     "examples": {
-        "path": "examples/",
+        "path": "examples",
         "configs": ["5gc-no-scp-sepp1-999-70", "5gc-sepp3-315-010", "gnb-001-01-ue-315-010", "gnb-999-70-ue-001-01", "5gc-no-scp-sepp2-001-01", "5gc-tls-sepp1-999-70", "gnb-001-01-ue-999-70", "gnb-999-70-ue-315-010", "5gc-no-scp-sepp3-315-010", "5gc-tls-sepp2-001-01", "gnb-315-010-ue-001-01", "gnb-999-70-ue-999-70", "5gc-sepp1-999-70", "5gc-tls-sepp3-315-010", "gnb-315-010-ue-315-010", "5gc-sepp2-001-01", "gnb-001-01-ue-001-01", "gnb-315-010-ue-999-70"]
     },
     "open5gs": {
-        "path": "open5gs/",
+        "path": "open5gs",
         "configs": ["amf", "bsf", "hss", "nrf", "pcf", "scp", "sepp2", "sgwu", "udr", "ausf", "mme", "nssf", "pcrf", "sepp1", "sgwc", "smf", "udm", "upf"]
     }
 }
@@ -108,8 +108,11 @@ class AnsibleManager(CommandLineManager):
     def runFileCommands(self):
         for cmd in self.run:
             cmdKeys = cmd.keys()
-            cmdTest = cmd["cmd"].split(".")
 
+            if "where" not in cmdKeys:
+                continue
+
+            cmdTest = cmd["cmd"].split(".")
             if len(cmdTest) == 2 and cmdTest[0] in TESTS.keys() and cmdTest[1] in TESTS[cmdTest[0]]:
                 if "config" not in cmdKeys:
                     self._raiseMissingConfig(f"Configuration for test ({cmdTest}) was not provided")
@@ -137,9 +140,13 @@ class AnsibleManager(CommandLineManager):
         
         if self.config["copy_logs"]:
             for func in VALID_FUNC:
-                name=f"\nCopying [dark_orange italic]{func}[/] logs\n"
-                command=f"src=/root/open5gs/install/var/log/open5gs/{func}.log dest={{{{ playbook_dir }}}}/logs-{{{{ inventory_hostname }}}}/{func}.log"
-                self.runAdHocCommand("all", "ansible.builtin.fetch", command, name)
+                self.fetchLogs(func)
+
+
+    def fetchLogs(self, func):
+        name=f"\nCopying [dark_orange italic]{func.upper()}[/] logs\n"
+        command=f"src=/root/open5gs/install/var/log/open5gs/{func}.log dest={{{{ playbook_dir }}}}/logs-{{{{ inventory_hostname }}}}/{func}.log"
+        self.runAdHocCommand("all", "ansible.builtin.fetch", command, name)
 
 
     def getLogs(self, where, components, lines=10):
@@ -235,8 +242,6 @@ class AnsibleManager(CommandLineManager):
             self.config["create_services"] = "true"
         with open(self.cwd / "ansible-setup" / "vars" / "vars.yaml", "w") as f:
             f.write("---\n")
-            f.write("vplmn_test_script: "  + f'{self.config["vplmn"]["test_script"]}' + "\n")
-            f.write("hplmn_test_script: "  + f'{self.config["hplmn"]["test_script"]}' + "\n")
             f.write("test_command_timeout: "  + str(TEST_COMMAND_TIMEOUT) + "\n")
             f.write("create_services: "  + f'\"{self.config["create_services"]}\"' + "\n")
 

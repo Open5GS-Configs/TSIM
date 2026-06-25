@@ -234,3 +234,5 @@ config_vultr.yaml
 ansible-setup/inventory/hosts.yaml
 configs/
 hosts/
+ansible-setup/inventory/hosts.yaml
+logs.txt
