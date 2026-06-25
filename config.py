@@ -100,8 +100,6 @@ class Config(CommandLineManager):
             "ogs_version": ("ogs", "version"),
             "hplmn_ip": ("hplmn", "private_ip"),
             "vplmn_ip": ("vplmn", "private_ip"),
-            "h_test": ("hplmn", "test_script"),
-            "v_test": ("vplmn", "test_script"),
             "h_region": ("vultr", "hplmn_region"),
             "v_region": ("vultr", "vplmn_region"),
             "vultr_plan_id": ("vultr", "plan_id"),
@@ -149,8 +147,6 @@ class Config(CommandLineManager):
         self.parser.add_argument("--user_ssh_key", help="An ssh key automatically added to the authorized keys in the VMs")
         self.parser.add_argument("--hplmn_ip", help="The VPC ip of the home network")
         self.parser.add_argument("--vplmn_ip", help="The VPC ip of the visited network")
-        self.parser.add_argument("--h_test", help="The path of the test script to be executed in the HPLMN")
-        self.parser.add_argument("--v_test", help="The path of the test script to be executed in the VPLMN")
         self.parser.add_argument("--create_services", action='store_true', help="Creates service files for OGS components in /etc/system/systemd")
         self.parser.add_argument("--copy_logs", action='store_true', help="Copies logs from VMs into local machine")
         self.parser.add_argument('--ansible_tags', nargs='+', help="Tells ansible which stages to run. Options: install_stage, config_stage, testing_stage, services_stage, ogstun, install_ogs")

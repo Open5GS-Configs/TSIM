@@ -1,13 +1,13 @@
 import asyncio
 import subprocess
-
-from sys import argv
+import sys
 
 from textual.app import App, ComposeResult
 from textual.widgets import Header, Footer, Button, RichLog, Static
 from textual.containers import VerticalScroll, Vertical
 from textual.message import Message
 from textual import work
+
 
 
 class Main_Output(RichLog):
@@ -35,14 +35,28 @@ class TSim(App):
     TITLE = "TSim TUI"
     CSS_PATH = "tui.tcss"
 
-    def __init__(self, config, run, cwd):
-        self.config = config
-        self.run = run
-        self.cwd = cwd
+    def __init__(self, config, run, cwd, setup) -> None:
+        self.setup = setup
 
-        for i in range(len(run)):
-            if isinstance(run[i], dict) and "logs" in run[i].keys():
-                self.logs = run[i]["logs"]
+        self.config = config
+        self.runCmd = run
+        self.cwd = cwd
+        self.f = open("tui/logs.txt", "w")
+
+        self.arguments = sys.argv
+        if "--tui" in self.arguments: self.arguments.remove("--tui")
+        # removes tags from arguments (are added later)
+        if "--ansible_tags" in self.arguments: 
+            for i in range(len(self.arguments)):
+                if self.arguments[i] == "--ansible_tags":
+                    self.arguments = self.arguments[:i]
+                    break
+        if "-test" in self.arguments: self.arguments.remove("-test")
+
+        # extracts components to be logged during testing from run file
+        for i in range(len(self.runCmd)):
+            if isinstance(self.runCmd[i], dict) and "logs" in self.runCmd[i].keys():
+                self.logs = self.runCmd[i]["logs"]
                 self.numLogs = len(self.logs)
 
                 if self.numLogs == 0:
@@ -51,14 +65,9 @@ class TSim(App):
         super().__init__()
 
 
-    def  on_setup_complete(self, message: SetupComplete) -> None:
-        print("Handler entered")
-        self.callTest()
+    def on_unmount(self) -> None:
+        self.f.close()
 
-        for i in range(self.numLogs):
-            self.stream_logs(self.logs[i]["where"], self.logs[i]["func"], f"log{i+1}")
-
-        
     def on_mount(self) -> None:
         self.stream_provider_ansible()
         
@@ -82,45 +91,58 @@ class TSim(App):
                         wrap=True,  
                         classes="child-log" 
                     )
+
+
+    def  on_setup_complete(self, message: SetupComplete) -> None:
+        self.f.write("Handler entered \n")
+        self.callTest()
+
+        for i in range(self.numLogs):
+            self.stream_logs(self.logs[i]["where"], self.logs[i]["func"], f"log{i+1}")
     
 
     @work(thread=True)
     def callTest(self):
         command = ["python3"]
-        argv.remove("--tui")
-        argv.remove("ansible_tags")
-
-        command.extend(argv)
+        
+        command.extend(self.arguments)
         command.append("-test")
-        self.stream_command_output(["python3", "/home/agustin/5G_Setup/main.py", "-c", "/home/agustin/config/config.yaml", "-r", "/home/agustin/config/run.yaml", "-test"], "mainOutput")
+        self.stream_command_output(command, "mainOutput")
 
 
     @work(thread=True)
     def stream_logs(self, where, function, id):
         SCRIPT=f"sudo journalctl -fu open5gs-{function}d --no-pager"
+        self.f.write(str(self.config[where].keys()) + "\n")
         HOST=self.config[where]["public_ip"]
         USER="root" if self.config["location"] == "cloud" else "vagrant"
 
-        command = ["ssh", f"{USER}@{where}", f"{SCRIPT}"]
+        command = ["ssh", f"{USER}@{HOST}", f"{SCRIPT}"]
         self.stream_command_output(command, id)
 
 
     @work(thread=True)
     def stream_provider_ansible(self):
         command = ["python3"]
-        argv.remove("--tui")
 
-        # removes ansible tags that will be added later
-        for i in range(len(argv)):
-            if argv[i] == "ansible_tags":
-                argv = argv[:i]
+        tags = ""
+        if len(self.config["ansible_tags"]) != 0:
+            for tag in self.config['ansible_tags'][0].split():
+                if "testing_stage" in tag: continue
+                tags = tag + " "
 
-        command.extend(argv)
-        command.extend(["--ansible_tags", "install_stage config_stage services_stage"])
-        if "testing_stage" not in self.config["ansible_tags"].split(" ") or "test" not in self.config.keys():
+        command.extend(self.arguments)
+        if len(tags) != 0: command.extend(["--ansible_tags", tags])
+        self.f.write("First config" + str(self.config) + "\n")
+        if "testing_stage" not in self.config["ansible_tags"] and not self.config["test"]:
             self.stream_command_output(command, "mainOutput")
         
-        print("Posting SetupComplete")
+        self.f.write("Posting SetupComplete \n")
+        
+        # updates config with IPs or ports
+        self.setup.strategy.readIPs()
+        self.config = self.setup.config
+        self.f.write("Updated config" + str(self.config) + "\n")
         self.call_from_thread(
             self.post_message,
             SetupComplete()
@@ -128,11 +150,10 @@ class TSim(App):
 
 
     def stream_command_output(self, command, id) -> None:
-        print("Command being executed " + str(command))
+        self.f.write("Command being executed " + str(command) + "\n")
         log_widget = self.query_one(f"#{id}", RichLog)
         log_widget.clear()
-        log_widget.write(str(argv))
-        log_widget.write("[bold yellow]Starting command...[/]")
+        log_widget.write(f"[bold yellow]Starting command...[/]\n {command}")
 
         try:
             process = subprocess.Popen(
@@ -155,5 +176,5 @@ class TSim(App):
 
 
 if __name__ == "__main__":
-    app = TSim({"config": False})
+    app = TSim(config, run, cwd, setup)
     app.run()

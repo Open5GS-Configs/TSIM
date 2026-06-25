@@ -140,9 +140,13 @@ class AnsibleManager(CommandLineManager):
         
         if self.config["copy_logs"]:
             for func in VALID_FUNC:
-                name=f"\nCopying [dark_orange italic]{func}[/] logs\n"
-                command=f"src=/root/open5gs/install/var/log/open5gs/{func}.log dest={{{{ playbook_dir }}}}/logs-{{{{ inventory_hostname }}}}/{func}.log"
-                self.runAdHocCommand("all", "ansible.builtin.fetch", command, name)
+                self.fetchLogs(func)
+
+
+    def fetchLogs(self, func):
+        name=f"\nCopying [dark_orange italic]{func.upper()}[/] logs\n"
+        command=f"src=/root/open5gs/install/var/log/open5gs/{func}.log dest={{{{ playbook_dir }}}}/logs-{{{{ inventory_hostname }}}}/{func}.log"
+        self.runAdHocCommand("all", "ansible.builtin.fetch", command, name)
 
 
     def getLogs(self, where, components, lines=10):
@@ -238,8 +242,6 @@ class AnsibleManager(CommandLineManager):
             self.config["create_services"] = "true"
         with open(self.cwd / "ansible-setup" / "vars" / "vars.yaml", "w") as f:
             f.write("---\n")
-            f.write("vplmn_test_script: "  + f'{self.config["vplmn"]["test_script"]}' + "\n")
-            f.write("hplmn_test_script: "  + f'{self.config["hplmn"]["test_script"]}' + "\n")
             f.write("test_command_timeout: "  + str(TEST_COMMAND_TIMEOUT) + "\n")
             f.write("create_services: "  + f'\"{self.config["create_services"]}\"' + "\n")
 

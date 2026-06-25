@@ -21,20 +21,19 @@ def main():
     if "destroy" in configKeys:
         setup.destroy()
 
-    elif "restart" in configKeys:
-        setup.destroy()
-        setup.setup()
-        setup.ansibleManager.runFileCommands()
-        setup.printVMIPs()
-
     elif "up" in configKeys:
         setup.strategy.callInfManager()
         setup.printVMIPs()
 
     elif "tui" in configKeys:
-        app = TSim(config, run, cwd)
-        print(type(app))
+        app = TSim(config, run, cwd, setup)
         app.run()
+
+    elif "restart" in configKeys:
+        setup.destroy()
+        setup.setup()
+        setup.ansibleManager.runFileCommands()
+        setup.printVMIPs()
 
     elif "ansible" in configKeys:
         runTest = False
