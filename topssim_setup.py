@@ -44,14 +44,14 @@ class setupTOPSSIM(CommandLineManager):
             print(f"Error present in configuration:(\n{e}")
             return
 
+        print("Adding Control Node's SSH key to config\n")
+        self._addAnsibleSSHKey()
+
         self.ansibleManager = AnsibleManager(self.config, self.run, self.cwd)
 
 
     def setup(self):
         if self.strategy == None or self.ansibleManager == None: return
-
-        print("Adding Control Node's SSH key to config\n")
-        self._addAnsibleSSHKey()
 
         self.consoleRule(f"Calling {self.strategy.__class__.__name__}")
         self.strategy.callInfManager()
@@ -250,6 +250,9 @@ class setupTOPSSIM(CommandLineManager):
         
         if "ansible_tags" not in configKeys:
             self.config["ansible_tags"] = ""
+
+        self.config["hplmn"]["hostname"] = "HPLMNTEST"
+        self.config["vplmn"]["hostname"] = "VPLMNTEST"
 
         return True
 
