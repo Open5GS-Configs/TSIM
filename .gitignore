@@ -234,3 +234,9 @@ config_vultr.yaml
 ansible-setup/inventory/hosts.yaml
 ansible-setup/inventory/hosts.yaml
 logs.txt
+results/output/*
+results/pcap/*
+results/timing/*
+results/logs/*
+ansible-setup/inventory/hosts.yaml
+ansible-setup/vars/vars.yaml

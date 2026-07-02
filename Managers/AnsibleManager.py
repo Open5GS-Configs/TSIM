@@ -1,9 +1,14 @@
 import jinja2
+import csv 
 
+from datetime import datetime
 from yaml import dump
+from json import loads
 from pathlib import Path
 from .CommandLineManager import CommandLineManager
 
+
+DATE_FORMAT = "%H:%M:%S.%f"
 
 TEST_COMMAND_TIMEOUT = 120
 TEST_COMMAND_POLL_TIME = 10
@@ -101,11 +106,36 @@ class AnsibleManager(CommandLineManager):
         except Exception as e:
             import traceback
             traceback.print_exc()
-        #if res.returncode != 0:
-        #    raise Exception("Ansible Playbook presented an error!")
 
 
     def runFileCommands(self):
+        """
+        Results: 
+        - logs
+        - output
+        - pcap
+        """
+        now = datetime.now().strftime("%Y_%m_%d_%H_%M_%S")
+        if len(self.run) > 0: 
+            timingPath = self.cwd / "results" / "timing" / now
+            timingPath.mkdir()
+        else:
+            return
+
+        if self.config["capture_packets"]: self.runAdHocCommand("all",
+                                             "ansible.builtin.shell", 
+                                            r"rm -f /tmp/capture.pcap & \
+                                            setsid tcpdump -i any -w /tmp/capture.pcap -U >/dev/null 2>&1 & \
+                                            echo $! >/tmp/tcpdump.pid", 
+                                            "Start testing packet capture", become=True)
+        
+        timing = []
+        maxRepeats = 1
+        for cmd in self.run:
+            if "repeats" in cmd.keys():
+                if int(cmd["repeats"]) > maxRepeats:
+                    maxRepeats = int(cmd["repeats"])
+
         for cmd in self.run:
             cmdKeys = cmd.keys()
 
@@ -130,23 +160,113 @@ class AnsibleManager(CommandLineManager):
             if "poll" not in cmdKeys:
                 cmd["poll"] = TEST_COMMAND_POLL_TIME
 
-            name = f"\n[blue bold]{cmd['where'].upper()}:[/] executing [dark_orange italic]{cmd['cmd']}[/]\n"
-            self.runAdHocCommand(cmd["where"], cmd["module"], cmd["cmd"], name, B=cmd['timeout'], P=cmd['poll'])
+            repeatRun = ("repeats" in cmdKeys)
+            if repeatRun: 
+                repeats = cmd["repeats"]
+                output_dir = self.cwd / "results" / "output" / now
+                output_dir.mkdir(parents=True, exist_ok=True)
+            else: 
+                repeats = 1
             
+            name = f"\n[blue bold]{cmd['where'].upper()}:[/] executing [dark_orange italic]{cmd['cmd']}[/]\n"
+            
+            agg = {}
+            timestamps = {}
+            finished = True
+            for r in range(repeats):
+                res = self.runAdHocCommand(cmd["where"], cmd["module"], cmd["cmd"], name, B=cmd['timeout'], P=cmd['poll'], capture_output=repeatRun, text=repeatRun)
+                if res.returncode != 0: 
+                    self.consolePrint("[red bold] Error [/] presented by command: " + cmd["cmd"])
+                    finished = False
+                    break
+
+                clIdx = 0
+                if repeatRun:
+                    stdout = res.stdout.split(" => ")
+                    for i in range(1, len(stdout)):
+                        vm = stdout[i-1][clIdx:].split(" | ")[0].split("\n")[-1]
+                        clIdx = stdout[i].rfind("}")
+
+                        deltaTime = datetime.strptime(loads(stdout[i][:clIdx+1])["delta"], DATE_FORMAT)  
+                        timeSec = deltaTime.second + deltaTime.microsecond / (10**6)
+                        agg[vm] = timeSec if (vm not in agg.keys()) else (agg[vm] + timeSec)
+
+                        cmdID = vm + "_" + cmd["cmd"]
+                        if vm not in timestamps.keys(): timestamps[vm] = {} 
+                        timestamps[vm]["command"] = cmdID
+                        timestamps[vm]["rep" + str(r)] = timeSec
+                    
+                    if self.config["write_test_output"]:
+                        with open(output_dir / "output.txt", "a") as f:
+                            f.write(res.stdout)
+            
+            if repeatRun and finished:
+                self.consoleRule(f"\n[bold]Executed [/]: [dark_orange italic]{cmd['cmd']}[/]")
+                self.consolePrint(f"[spring_green4]Repetitions [/]: {repeats}\nAverage execution times were:")
+                for vm in agg:
+                    self.consolePrint(f"[spring_green4] {vm} [/]: {(agg[vm]/repeats):.4f} seconds")
+
+                    for i in range(maxRepeats-repeats):
+                        timestamps[vm]["rep" + str(repeats+i)] = "NA"
+            
+            for time in timestamps:
+                timing.append(timestamps[time])
+
             if "logs" not in cmdKeys:
                 continue 
                 
             self.getLogs(cmd["where"], cmd["logs"])
         
+        with open(timingPath / "timing.csv", "a", newline='') as timingCSV:
+            fieldnames = []
+            fieldnames.append("command")
+
+            for i in range(maxRepeats):
+                fieldnames.append("rep" + str(i))
+                
+            writer = csv.DictWriter(timingCSV, fieldnames=fieldnames)
+            writer.writeheader()
+            writer.writerows(timing)
+
+        if self.config["capture_packets"]: 
+            pcap_dir = self.cwd / "results" / "pcap" / now
+            pcap_dir.mkdir(parents=True, exist_ok=True)
+            
+            self.runAdHocCommand("all", 
+                            "ansible.builtin.shell", 
+                            r"kill -2 $(cat /tmp/tcpdump.pid) && sleep 2 && rm -f /tmp/tcpdump.pid", 
+                            "Kill tcpdump process")
+
+            self.runAdHocCommand("all", 
+                            "ansible.builtin.fetch", 
+                            str(f"src=/tmp/capture.pcap dest={pcap_dir}/{{{{ inventory_hostname }}}}_capture.pcap flat=yes"), 
+                            "Fetch captured packets (.pcap)")
+
         if self.config["copy_logs"]:
-            for func in VALID_FUNC:
-                self.fetchLogs(func)
+            logs_dir = self.cwd / "results" / "logs" / now
+            logs_dir.mkdir(parents=True, exist_ok=True)
 
+            res = self.runAdHocCommand("all", "ansible.builtin.shell", "find /root/open5gs/install/var/log/open5gs -maxdepth 1 -type f", "", capture_output=True, text=True)
+            stdout = res.stdout.split("\n")
+            if "Using" in stdout[0]:
+                stdout = stdout[1:]
+            
+            plmn = ""
+            for i in range(len(stdout)):
+                if ">>" in stdout[i]:
+                    plmn = stdout[i].split(" | ")[0]
+                # ignore non-log files
+                elif "log" not in stdout[i]:
+                    continue
+                else:
+                    self.fetchLogs(stdout[i].split("/")[-1].split(".")[0], logs_dir, plmn)
+            
 
-    def fetchLogs(self, func):
+    def fetchLogs(self, func, logs_dir, where="all"):
         name=f"\nCopying [dark_orange italic]{func.upper()}[/] logs\n"
-        command=f"src=/root/open5gs/install/var/log/open5gs/{func}.log dest={{{{ playbook_dir }}}}/logs-{{{{ inventory_hostname }}}}/{func}.log"
-        self.runAdHocCommand("all", "ansible.builtin.fetch", command, name)
+        dest = logs_dir / f"logs/{{{{ inventory_hostname }}}}/{func}.log"
+        command=f"src=/root/open5gs/install/var/log/open5gs/{func}.log dest={dest}"
+        self.runAdHocCommand(where, "ansible.builtin.fetch", command, name)
 
 
     def getLogs(self, where, components, lines=10):
@@ -157,15 +277,13 @@ class AnsibleManager(CommandLineManager):
                 f = func["func"]
             else:
                 f = func
-            if f in VALID_FUNC:
-                name=f"\nLast [plum1]{numLines}[/] lines of [dark_orange]{f.upper()}[/] logs from [blue bold]{where.upper()}:[/]"
-                command=f"tail -n {str(numLines)} /root/open5gs/install/var/log/open5gs/{f}.log"
-                self.runAdHocCommand(where, "ansible.builtin.shell", command, name, titleJustify="left")
-            else:
-                self.__raiseWrongConfig(f"{f} is not a valid Open5GS function")
+
+            name=f"\nLast [plum1]{numLines}[/] lines of [dark_orange]{f.upper()}[/] logs from [blue bold]{where.upper()}:[/]"
+            command=f"tail -n {str(numLines)} /root/open5gs/install/var/log/open5gs/{f}.log"
+            self.runAdHocCommand(where, "ansible.builtin.shell", command, name, titleJustify="left")
 
 
-    def runAdHocCommand(self, where, module, cmd, name, B=None, P=None, cwd=None, titleJustify="center"):
+    def runAdHocCommand(self, where, module, cmd, name, B=None, P=None, cwd=None, titleJustify="center", capture_output=False, text=False, become=False):
         command = ["ansible", where, "-m", module, "-a", cmd]
         if B and B != -1:
             command.append("-B")
@@ -175,12 +293,14 @@ class AnsibleManager(CommandLineManager):
             command.append(str(P))
         if not cwd:
             cwd = self.cwd / "ansible-setup"
+        if become:
+            command.append("-b")
         command.append("-v")
-        self.runCommand(command, cwd=cwd, name=name, titleJustify=titleJustify)
+        return self.runCommand(command, cwd=cwd, name=name, titleJustify=titleJustify, capture_output=capture_output, text=text)
 
 
     def _writeVars(self):
-        res = self.runCommand(["git", "ls-remote", self.config["ogs"]["repo"]], noOutput=True) 
+        res = self.runCommand(["git", "ls-remote", self.config["ogs"]["repo"]], capture_output=True, text=True) 
         if res.returncode != 0:
             self.__raiseWrongConfig("ogs_repo")
         else:
@@ -199,7 +319,7 @@ class AnsibleManager(CommandLineManager):
                         f.write(f"use_{c[0].split('_')[0]}_path: true\n")
                         f.write(f"{c[0]}: {self.config[plmn][c[0]]}\n")
                     else:
-                        res = self.runCommand(["git", "ls-remote", self.config[plmn][c[1]]], noOutput=True) 
+                        res = self.runCommand(["git", "ls-remote", self.config[plmn][c[1]]], capture_output=True, text=True) 
                         if res.returncode != 0:
                             self.__raiseWrongConfig(plmn + c[1])
                         else:

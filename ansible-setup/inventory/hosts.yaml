@@ -7,10 +7,10 @@ all:
     hplmn:  
       hosts:
         hplmn_node_1: 
-          ansible_host: 155.138.146.57
+          ansible_host: 155.138.151.209
         
     vplmn:  
       hosts:
         vplmn_node_1:
-          ansible_host: 155.138.157.43
+          ansible_host: 149.248.54.73
         

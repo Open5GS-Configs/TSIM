@@ -41,7 +41,7 @@ class TSim(App):
         self.config = config
         self.runCmd = run
         self.cwd = cwd
-        self.f = open("tui/logs.txt", "w")
+        self.f = open("/home/agustin/5G_Setup/tui/logs.txt", "w")
 
         self.arguments = sys.argv
         if "--tui" in self.arguments: self.arguments.remove("--tui")

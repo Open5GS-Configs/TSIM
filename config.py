@@ -89,6 +89,8 @@ class Config(CommandLineManager):
             "user_ssh_key": ("user_ssh_key",),
             "create_services": ("create_services",),
             "copy_logs": ("copy_logs",),
+            "capture_packets": ("capture_packets",),
+            "write_test_output": ("write_test_output",),
             "w": ("where",),
             "m": ("module",),
             "a": ("arguments",),
@@ -149,6 +151,7 @@ class Config(CommandLineManager):
         self.parser.add_argument("--vplmn_ip", help="The VPC ip of the visited network")
         self.parser.add_argument("--create_services", action='store_true', help="Creates service files for OGS components in /etc/system/systemd")
         self.parser.add_argument("--copy_logs", action='store_true', help="Copies logs from VMs into local machine")
+        self.parser.add_argument("--capture_packets", action='store_true', help="Captures network packets from the VMs during testing and copies them over to the host machine")
         self.parser.add_argument('--ansible_tags', nargs='+', help="Tells ansible which stages to run. Options: install_stage, config_stage, testing_stage, services_stage, ogstun, install_ogs")
 
         # Local Arguments

@@ -8,7 +8,7 @@ SEPARATOR = ' '+'='*10+' '
 
 
 class CommandLineManager():
-    def runCommand(self, command, input=None, noOutput=False, cwd=None, name=None, titleJustify="center"):
+    def runCommand(self, command, input=None, capture_output=False, text=False, cwd=None, name=None, titleJustify="center"):
         commandName = ""
         for c in command:
                 commandName += c + " "
@@ -21,7 +21,7 @@ class CommandLineManager():
         console.print("\n")
         
         start_time = time()
-        res = run(command, input=input, capture_output=noOutput, text=noOutput, cwd=cwd)
+        res = run(command, input=input, capture_output=capture_output, text=text, cwd=cwd)
 
         if res.returncode != 0:
             console.print(f"\n:warning:  Command ({commandName}) presented an [red]error[/] [Status code: {res.returncode}]\n\n")

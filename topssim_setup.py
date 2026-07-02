@@ -21,7 +21,6 @@ LOCAL_PROVIDERS = ["vb", "vmware"]
 COMMON_REQUIRED_PARAMETERS = ["ogs", "hplmn", "vplmn", "provider"]
 LOCAL_REQUIRED_PARAMETERS = ["vagrant"]
 VAGRANT_REQUIRED_PARAMETERS = ["ram", "disk", "cpu"]
-PLMN_CLOUD_REQUIRED_PARAMETERS = ["test_script"]
 VULTR_CLOUD_REQUIRED_PARAMETERS = ["plan_id", "hplmn_region", "hplmn_region"]
 VPC_CLOUD_REQUIRED_PARAMETERS = ["region"]
 
@@ -154,11 +153,6 @@ class setupTOPSSIM(CommandLineManager):
             print("\nCloud provider Recognized!")
             self.config["location"] = "cloud"
 
-            for plmn in ["hplmn", "vplmn"]:
-                for p in PLMN_CLOUD_REQUIRED_PARAMETERS:
-                    if p not in self.config[plmn].keys():
-                        self._raiseMissingConfig(p)
-
             self.config["vultr"]["api_key"] = getenv("VULTR_API_KEY")
             if self.config["vultr"]["api_key"] == None or self.config["vultr"]["api_key"] == "":
                 self._raiseMissingConfig("vultr_api_key")
@@ -241,6 +235,12 @@ class setupTOPSSIM(CommandLineManager):
 
         if "create_services" not in configKeys:
             self.config["create_services"] = False
+
+        if "capture_packets" not in configKeys:
+            self.config["capture_packets"] = False
+            
+        if "write_test_output" not in configKeys:
+            self.config["write_test_output"] = False
 
         if "copy_logs" not in configKeys:
             self.config["copy_logs"] = False

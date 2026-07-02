@@ -81,6 +81,9 @@ vagrant:
 create_services: <(true or false) creates service files in /etc/systemd/system and enables all components to run at boot>
 user_ssh_key: "<SSH key of the user>"
 provider: "<your VM provider (can either be Vultr, VB or VMWare)>"
+capture_packets: <pcap capture with tcpdump during testing>
+write_test_output: <for commands with repeats, the output is not printed to the console. It can instead by written to an output.txt file>
+copy_logs: <all log files from the open5gs/install/var/open5gs/ directory are copied to the host>
 ```
 
 For **Local** VMs, it is important to note that the ram is meant to be in MB and the disk in GB. Also, Vagrant automatically forwards localhost ports for ssh connections to the VMs. The default user in the VMs will be called "vagrant" and the default password is also "vagrant".
@@ -111,11 +114,20 @@ A yaml file that gives commands to be executed in each machine. It is executed s
   function: amf
   cmd: registration.simple-test
   config: examples.gnb-001-01-ue-999-70
+
+- logs:
+    - where: vplmn
+      func: amf
+    - where: vplmn
+      func: ausf
+    - where: vplmn
+      func: sepp
 ```
 
 The first task executes a command in the HPLMN and collects the last 5 logs from the UDM and the last 100 from the SEPP.
 The second task executes a command in the VPLMN and collects the default 10 last logs from the AMF, UDM, and SEPP.
-Lastly, the last task runs the simple registration test with one of the example configurations. 
+The last task runs the simple registration test with one of the example configurations. 
+After that, the list of logs is used to stream the live logs from the components during testing using the TUI.
 
 A timeout and polling time can also be specified with each command. The default timeout is 120 seconds and polling is 10 seconds. 
 
@@ -130,6 +142,14 @@ You can check other command-line options with `python3 topssim_setup.py -h`.
 Some examples are:
 To run just the configuration and testing stages of Ansible on already existing machines:
 `python3 topssim_setup.py  -c /directory/your_config_file.yaml -r /directory/your_run_file.yaml -ansible --ansible_tags "config_stage testing_stage"`
+
+### TUI
+
+The text user interface created using the Textual library is intended to permit the live viewing of information from the lab environment. The program is ran through the TUI, while different windows on the side show a stream of logs from OGS components. To run this just at the `--tui` option to your command.
+
+<img src="/img/tui.png" width="75%">
+
+### Useful commands
 
 It is also useful to know that OpenTofu, Vagrant, and Ansible provide CLI tools. These can be used to isolate a part of the process. Some notable commands are:
 
