@@ -96,7 +96,7 @@ systemd-python==234
 textual==8.2.7
 textual-dev==1.8.0
 textual-serve==1.1.3
-Twisted==22.1.0
+Twisted==26.4.0rc2
 typing_extensions==4.15.0
 ubuntu-drivers-common==0.0.0
 ubuntu-pro-client==8001
