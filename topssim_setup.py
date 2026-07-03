@@ -18,10 +18,10 @@ from Managers.Vagrant import Vagrant
 CLOUD_PROVIDERS = ["vultr"]
 LOCAL_PROVIDERS = ["vb", "vmware"]
 
-COMMON_REQUIRED_PARAMETERS = ["ogs", "hplmn", "vplmn", "provider"]
+COMMON_REQUIRED_PARAMETERS = ["ogs", "provider"]
 LOCAL_REQUIRED_PARAMETERS = ["vagrant"]
 VAGRANT_REQUIRED_PARAMETERS = ["ram", "disk", "cpu"]
-VULTR_CLOUD_REQUIRED_PARAMETERS = ["plan_id", "hplmn_region", "hplmn_region"]
+VULTR_CLOUD_REQUIRED_PARAMETERS = ["plan_id", "hplmn_region", "vplmn_region"]
 VPC_CLOUD_REQUIRED_PARAMETERS = ["region"]
 
 SEPARATOR = ' '+'='*10+' '
@@ -44,14 +44,14 @@ class setupTOPSSIM(CommandLineManager):
             print(f"Error present in configuration:(\n{e}")
             return
 
+        print("Adding Control Node's SSH key to config\n")
+        self._addAnsibleSSHKey()
+
         self.ansibleManager = AnsibleManager(self.config, self.run, self.cwd)
 
 
     def setup(self):
         if self.strategy == None or self.ansibleManager == None: return
-
-        print("Adding Control Node's SSH key to config\n")
-        self._addAnsibleSSHKey()
 
         self.consoleRule(f"Calling {self.strategy.__class__.__name__}")
         self.strategy.callInfManager()
@@ -135,6 +135,20 @@ class setupTOPSSIM(CommandLineManager):
 
     def _checkConfigurationValid(self):
         configKeys = self.config.keys()
+
+        if "config" in self.config["hplmn"].keys() and self.config["hplmn"]["config"] in self.config["configs"]:
+            tmp = self.config["hplmn"]
+            self.config["hplmn"] = self.config["configs"][self.config["hplmn"]["config"]]
+            for key in tmp:
+                self.config["hplmn"][key] = tmp[key]
+        if "config" in self.config["vplmn"].keys():
+            tmp = self.config["vplmn"]
+            self.config["vplmn"] = self.config["configs"][self.config["vplmn"]["config"]]
+            for key in tmp:
+                self.config["vplmn"][key] = tmp[key]
+        
+        print(self.config["hplmn"])
+
         
         if "vultr_regions" in configKeys or "vultr_plans" in configKeys:
             self.config["vultr"] = {}
@@ -250,6 +264,9 @@ class setupTOPSSIM(CommandLineManager):
         
         if "ansible_tags" not in configKeys:
             self.config["ansible_tags"] = ""
+
+        self.config["hplmn"]["hostname"] = "HPLMNTEST"
+        self.config["vplmn"]["hostname"] = "VPLMNTEST"
 
         return True
 

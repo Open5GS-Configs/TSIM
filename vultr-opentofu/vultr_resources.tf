@@ -7,42 +7,39 @@ locals {
   )
 }
 
-resource "vultr_instance" "vplmn" {
-    label = var.V_HOSTNAME
-    hostname = var.V_HOSTNAME
-    plan = var.vultr_plan_id
-    region = var.h_region
-    os_id = "2284"
-    enable_ipv6 = false
-    vpc_ids = [vultr_vpc.sepp-link.id]
-    ssh_key_ids = local.ssh_key_ids
+
+resource "vultr_instance" "box" {
+  for_each = var.boxes
+
+  plan = var.vultr_plan_id
+  os_id = "2284"
+  enable_ipv6 = false
+
+  vpc_ids = [
+    for vpc_name in each.value["vpcs"]:
+    vultr_vpc.vpc-link[vpc_name].id
+  ]
+  
+  ssh_key_ids = local.ssh_key_ids
+
+  label = each.value["hostname"]
+  hostname = each.value["hostname"]
+  region = each.value["region"]
 }
 
-resource "vultr_instance" "hplmn" {
-    label = var.H_HOSTNAME
-    hostname = var.H_HOSTNAME
-    plan = var.vultr_plan_id
-    region = var.h_region
-    os_id = "2284"
-    enable_ipv6 = false
-    vpc_ids = [vultr_vpc.sepp-link.id]
-    ssh_key_ids = local.ssh_key_ids
-}
-
+variable "boxes" {}
 variable "vultr_plan_id" {}
-variable "H_HOSTNAME" {}
-variable "h_region" {}
-variable "V_HOSTNAME" {}
-variable "v_region" {}
 
+resource "vultr_vpc" "vpc-link" {
+  for_each = var.descriptions
+  description = each.value
 
-resource "vultr_vpc" "sepp-link" {
-	description = "sepp-link-test"
 	region = var.vpc_region
   v4_subnet  = var.vpc_v4_subnet
 	v4_subnet_mask = var.vpc_v4_subnet_mask
 }
 
+variable "descriptions" {}
 variable "vpc_region" {}
 variable "vpc_v4_subnet_mask" {}
 variable "vpc_v4_subnet" {}
@@ -64,12 +61,9 @@ resource "vultr_ssh_key" "ansible_ssh_key" {
 
 variable "ansible_ssh_key" {}
 
-
-output "vplm_ip" {
-  value = vultr_instance.vplmn.main_ip
-}
-
-
-output "hplm_ip" {
-  value = vultr_instance.hplmn.main_ip
+output "instance_ips" {
+  value = {
+    for name, instance in vultr_instance.box :
+    name => instance.main_ip
+  }
 }
