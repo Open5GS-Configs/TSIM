@@ -96,6 +96,7 @@ class Config(CommandLineManager):
             "a": ("arguments",),
             "B": ("B",),
             "P": ("P",),
+            "verbose": ("verbose",),
             "func": ("func",),
             "lines": ("lines",),
             "ogs_repo": ("ogs", "repo"),
@@ -138,6 +139,7 @@ class Config(CommandLineManager):
         # General Arguments
         self.parser.add_argument("-c", "--config", help="Gives the path to the config file that outlines all of the information necessary to configure the VMs")
         self.parser.add_argument("-r", "--run", help="Gives the path to the a file that describes a sequence of commands to be run in the VMs")
+        self.parser.add_argument("-v", "--verbose", action='store_true', help="Gives the option to run a TUI that displays some logs alongside test execution")
         self.parser.add_argument("--tui", action='store_true', help="Gives the option to run a TUI that displays some logs alongside test execution")
         self.parser.add_argument("--provider", help="The VM provider that is used (Vultr, VirtualBox, VMWare, QEMU)")
         self.parser.add_argument("--ogs_repo", help="The Open5GS repo that is installed to the VMs")

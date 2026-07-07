@@ -1,0 +1,43 @@
+interface_num: 2
+private_ip: 
+	topssim_hplmn:
+	:
+	:
+	:
+	:
+	:
+	:
+	:
+	:
+	:
+	:
+	:
+	:
+	:
+	:
+	:
+	:
+	:
+	:
+	:
+	:
+	:
+	:
+	:
+	:
+	:
+	:
+	:
+	:
+	:
+	:
+  interface: enp8s0
+  ip: 10.20.0.7
+topssim_vplmn:
+  interface: enp9s0
+  ip: 10.30.0.8
+
+ogs: False
+
+provisioning_script: /home/agustin/scripts/topssim_provision.sh
+

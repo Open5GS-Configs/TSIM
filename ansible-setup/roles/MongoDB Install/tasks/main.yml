@@ -39,17 +39,11 @@
     update_cache: yes
   become: yes
 
-- name: Wait until systemd has succesfully started
-  ansible.builtin.command: systemctl is-system-running
-  register: systemd_state
-  retries: 30
-  delay: 10
-  until: systemd_state.stdout in ["running"]
-  changed_when: false
-
 - name: Make sure MongoDB is running and enable it 
   ansible.builtin.systemd_service:
     state: started
     enabled: true
     name: mongod
+  retries: 30
+  delay: 10
   become: yes

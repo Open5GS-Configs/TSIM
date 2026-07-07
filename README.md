@@ -1,6 +1,6 @@
 # TOPSSIM Environment Setup
 
-The purpose of this project is to create a reproducible environment for testing 5G core performance within the TOPSSIM project. It uses a number of tools to automate the creation and configuration of virtual machines used for testing. Currently, it creates two VMs, one per PLMN. This could be extended to create a VM per component, connecting each VM through a private network and running only its particular function in the future. 
+The purpose of this project is to create a reproducible environment for testing 5G core performance within the TOPSSIM project. It uses a number of tools to automate the creation and configuration of virtual machines used for testing. Currently, it creates VMs with configuration available for machines using Open5GS or not. This could be extended to create a VM per component, connecting each VM through a private network and running only its particular function in the future. 
 
 This project uses:
     <br>- A Python script for parsing arguments and connecting different tools together

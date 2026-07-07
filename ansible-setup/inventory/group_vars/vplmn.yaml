@@ -1,5 +1,52 @@
-private_ip: 10.10.0.4
-use_config_path: false
+interface_num: 2
+private_ip: 
+	sepp_link:
+	:
+	:
+	:
+	:
+	:
+	:
+	:
+	:
+	:
+	:
+	:
+	:
+	:
+	:
+	:
+	:
+	:
+	:
+	:
+	:
+	:
+	:
+	:
+	:
+	:
+	:
+	:
+	:
+	:
+	:
+  interface: enp8s0
+  ip: 10.10.0.4
+topssim_vplmn:
+  interface: enp9s0
+  ip: 10.30.0.6
+
+ogs: True
+
+ogs_repo: https://github.com/open5gs/open5gs
+ogs_version: main
+use_config_path: False
+
 config_repo: https://github.com/Open5GS-Configs/VPLMN-Config
-use_hosts_path: true
+
+use_hosts_path: True
+
 hosts_path: /home/agustin/hosts/vplmn/hosts
+
+

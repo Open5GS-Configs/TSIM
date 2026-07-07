@@ -1,0 +1,78 @@
+---
+# tasks file for Netplan Config
+
+# set static ips for sepp link
+# netplan apply
+# test connection?
+
+- name: Remove hardcoded address line
+  ansible.builtin.replace:
+    path: "{{ dest_netplan_path }}"
+    regexp: '^\s+- "[\d\.]+/[\d]+"$'
+    replace: ''
+  when: provider == "vultr" 
+
+- name: Set static ips for sepp link 
+  ansible.builtin.blockinfile:
+    path: "{{ dest_netplan_path }}"
+    marker: "# {mark} ANSIBLE MANAGED BLOCK - enp8s0"
+    insertafter: '      addresses:'
+    block: "{{ enp8s0_block | indent(6, first=true) }}"
+  when: provider == "vultr" 
+
+- name: Apply Netplan Config
+  ansible.builtin.command:
+    cmd: netplan apply
+  become: yes
+  when: provider == "vultr" 
+
+- name: Modify ufw rules (INPUT)
+  ansible.builtin.command:
+    cmd: ufw allow in on enp8s0
+  become: yes
+  when: provider == "vultr"
+
+- name: Modify ufw rules (OUTPUT)
+  ansible.builtin.command:
+    cmd: ufw allow out on enp8s0
+  become: yes
+  when: provider == "vultr"
+
+- name: Configure Network Emulator
+  ansible.builtin.shell: >
+    tc qdisc replace dev eth1 root netem \
+    {% if netem.delay is defined %} \ 
+    delay {{ netem.delay.time }} \
+      {% if netem.delay.jitter is defined %} \
+      {{ netem.delay.jitter }} \
+      {% endif %} \
+      {% if netem.delay.correlation is defined %} \
+      {{ netem.delay.correlation }} \
+      {% endif %} \
+    {% endif %} \
+    {% if netem.distribution is defined %} \
+    distribution {{ netem.distribution }} \
+    {% endif %} \
+    {% if netem.loss is defined %} \
+    loss {{ netem.loss }} \
+    {% endif %} \
+    {% if netem.corrupt is defined %} \
+    corrupt {{ netem.corrupt }} \
+    {% endif %} \
+    {% if netem.duplicate is defined %} \
+    duplicate {{ netem.duplicate }} \
+    {% endif %} \
+    {% if netem.rate is defined %} \
+    rate {{ netem.rate.rate }} \
+      {% if netem.rate.packetoverheard is defined %} \
+      {{ netem.rate.packetoverheard }} \
+      {% endif %} \
+      {% if netem.rate.cellsize is defined %} \
+      {{ netem.rate.cellsize }} \
+      {% endif %} \
+      {% if netem.rate.celloverhead is defined %} \
+      {{ netem.rate.celloverhead }} \
+      {% endif %} \
+    {% endif %} 
+  become: yes
+  when: ((provider == "vb") or (provider == "vmware")) and use_netem

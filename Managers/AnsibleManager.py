@@ -20,20 +20,47 @@ all:
   vars:
     ansible_user: {{ ansible_user }}
   children: 
-    hplmn:  
+{{ hosts }}
+"""
+
+HOST = """    {{ name }}:  
       hosts:
-        hplmn_node_1: 
-          ansible_host: {{ hplmn_public_ip }}
-        {% if provider == "local" %}
-          ansible_port: {{ hplmn_port }}
+        {{ name }}_node_1: 
+          ansible_host: {{ public_ip }}
+        {% if location == "local" %}
+          ansible_port: {{ port }}
         {% endif %}
-    vplmn:  
-      hosts:
-        vplmn_node_1:
-          ansible_host: {{ vplmn_public_ip }}
-        {% if provider == "local" %}
-          ansible_port: {{ vplmn_port }}
-        {% endif %}
+
+"""
+
+GROUP_VARS = """interface_num: {{ interface_num }}
+private_ip: 
+{{ private_ip }}
+ogs: {{ ogs }}
+{% if ogs %}
+ogs_repo: {{ ogs_repo }}
+ogs_version: {{ ogs_version }}
+use_config_path: {{ use_config_path }}
+{% if use_config_path %}
+config_path: {{ config_path }}
+{% else %}
+config_repo: {{ config_repo }}
+{% endif %}
+use_hosts_path: {{ use_hosts_path }}
+{% if use_hosts_path %}
+hosts_path: {{ hosts_path }}
+{% else %}
+hosts_repo: {{ hosts_repo }}
+{% endif %}
+{% else %}
+provisioning_script: {{ provisioning_script }}
+{% endif %}
+{% if location == "local" %}
+use_netem: {{ use_netem }}
+{% if use_netem %}
+netem: {{  netem  }}
+{% endif %}
+{% endif %}
 """
 
 VALID_FUNC = ["amf", "bsf", "mme", "nssf", "pcrf", "sepp1", "sepp2", "sgwu", "tls", "udr", "ausf", "hss", "nrf", "pcf", "scp", "sgwc", "smf", "udm", "upf"]
@@ -83,7 +110,9 @@ class AnsibleManager(CommandLineManager):
         self.cwd = cwd
 
         environment = jinja2.Environment()
-        self.template = environment.from_string(INVENTORY)
+        self.inventoryTemplate = environment.from_string(INVENTORY)
+        self.hostTemplate = environment.from_string(HOST)
+        self.groupvarsTemplate = environment.from_string(GROUP_VARS)
 
 
     def configure(self, writeInventory):
@@ -98,7 +127,10 @@ class AnsibleManager(CommandLineManager):
 
     def setup(self, tags):
         try:
-            command = ["ansible-playbook", "topssim_setup.yaml", "-v"]
+            print(self.config)
+            command = ["ansible-playbook", "topssim_setup.yaml"]
+
+            #if self.config["verbose"]: command.append("-v")
             if tags and len(tags) != 0:
                 command.append("--tags")
                 command.append(tags[0].replace(" ", ", "))
@@ -251,15 +283,15 @@ class AnsibleManager(CommandLineManager):
             if "Using" in stdout[0]:
                 stdout = stdout[1:]
             
-            plmn = ""
+            box = ""
             for i in range(len(stdout)):
                 if ">>" in stdout[i]:
-                    plmn = stdout[i].split(" | ")[0]
+                    box = stdout[i].split(" | ")[0]
                 # ignore non-log files
                 elif "log" not in stdout[i]:
                     continue
                 else:
-                    self.fetchLogs(stdout[i].split("/")[-1].split(".")[0], logs_dir, plmn)
+                    self.fetchLogs(stdout[i].split("/")[-1].split(".")[0], logs_dir, box)
             
 
     def fetchLogs(self, func, logs_dir, where="all"):
@@ -295,38 +327,71 @@ class AnsibleManager(CommandLineManager):
             cwd = self.cwd / "ansible-setup"
         if become:
             command.append("-b")
-        command.append("-v")
+        #if self.config["verbose"]: command.append("-v")
         return self.runCommand(command, cwd=cwd, name=name, titleJustify=titleJustify, capture_output=capture_output, text=text)
 
 
     def _writeVars(self):
-        res = self.runCommand(["git", "ls-remote", self.config["ogs"]["repo"]], capture_output=True, text=True) 
-        if res.returncode != 0:
-            self.__raiseWrongConfig("ogs_repo")
-        else:
-            print("Open5GS repo was found!")
-        
-        with open(self.cwd / "ansible-setup" / "roles" / "Open5GS Setup" / "vars" / "main.yml", "w") as f:
-            f.write(f"ogs_repo: {self.config['ogs']['repo']}\n")
-            f.write(f"ogs_version: {self.config['ogs']['version']}")
-        
-        for plmn in ["hplmn", "vplmn"]:
-            with open(self.cwd / "ansible-setup" / "inventory" / "group_vars" / f"{plmn}.yaml", "w") as f:
-                f.write(f"private_ip: {self.config[plmn]['private_ip']}\n")
+        use_path = {"use_config_path": True, "use_hosts_path": True}
+        netemConfig = ""
+        for box in self.config["boxes"]:
+            with open(self.cwd / "ansible-setup" / "inventory" / "group_vars" / f"{box}.yaml", "w") as f:
+                privateIP = dump(self.config["boxes"][box]["private_ip"])
+                print(privateIP)
+                privateIP = "\t" + privateIP
+                for i in range(len(privateIP)):
+                    if privateIP[i] == "\n":
+                        print(privateIP[:i+1])
+                        privateIP = privateIP[:i+1] + "\t" + privateIP[i-1:]
                 
-                for c in [["config_path", "config_repo"], ["hosts_path", "hosts_repo"]]:
-                    if self.config[plmn][c[0]] != None:
-                        f.write(f"use_{c[0].split('_')[0]}_path: true\n")
-                        f.write(f"{c[0]}: {self.config[plmn][c[0]]}\n")
+                print(privateIP)
+                ogs = True
+                if box not in self.config["ogs_boxes"]: 
+                    ogs = False
+                else:
+                    res = self.runCommand(["git", "ls-remote", self.config["boxes"][box]["ogs"]["repo"]], capture_output=True, text=True) 
+                    if res.returncode != 0:
+                        self.__raiseWrongConfig("ogs_repo")
                     else:
-                        res = self.runCommand(["git", "ls-remote", self.config[plmn][c[1]]], capture_output=True, text=True) 
-                        if res.returncode != 0:
-                            self.__raiseWrongConfig(plmn + c[1])
-                        else:
-                            print(plmn + c[1] + " was found!")
+                        print("Open5GS repo was found!")
+                    
+                    for c in [["config_path", "config_repo"], ["hosts_path", "hosts_repo"]]:
+                        if self.config["boxes"][box][c[0]] == "":
+                            res = self.runCommand(["git", "ls-remote", self.config["boxes"][box][c[1]]], capture_output=True, text=True) 
+                            if res.returncode != 0:
+                                self.__raiseWrongConfig(box + c[1])
+                            else:
+                                print(box + c[1] + " was found!")
+                            
+                            use_path[f"use_{c[0].split('_')[0]}_path"] = False
                 
-                        f.write(f"use_{c[0].split('_')[0]}_path: false\n")
-                        f.write(f"{c[1]}: {self.config[plmn][c[1]]}\n")
+                if self.config["location"].lower() == "local" and \
+                "use_netem" in self.config["boxes"][box]["vagrant"].keys() and \
+                self.config["boxes"][box]["vagrant"]["use_netem"]:
+                    netemConfig = dump(self.config["boxes"][box]["vagrant"]["netem"])
+                
+                groupvars = self.groupvarsTemplate.render(
+                    interface_num=len(self.config["boxes"][box]['private_ip']),
+                    private_ip=privateIP,
+                    ogs=ogs,
+                    ogs_repo=self.config["boxes"][box]["ogs"]["repo"],
+                    ogs_version=self.config["boxes"][box]["ogs"]["version"],
+                    use_config_path=use_path["use_config_path"],
+                    config_repo=self.config["boxes"][box]["config_repo"],
+                    config_path=self.config["boxes"][box]["config_path"],
+                    use_hosts_path=use_path["use_hosts_path"],
+                    hosts_repo=self.config["boxes"][box]["hosts_repo"],
+                    hosts_path=self.config["boxes"][box]["hosts_path"],
+                    provisioning_script=self.config["boxes"][box]["provisioning_script"],
+                    use_netem=self.config["boxes"][box]["vagrant"]["use_netem"],
+                    netem=netemConfig,
+                    location=self.config["location"]
+                )
+
+                f.write(groupvars)
+
+        with open(self.cwd / "ansible-setup" / "roles" / "Open5GS Config" / "vars" / "main.yml", "w") as f:
+            f.write("provider: " + self.config["provider"] + "\n")
 
         '''
         When a Vultr machine is created its /etc/hosts file has this information:
@@ -336,27 +401,11 @@ class AnsibleManager(CommandLineManager):
         # a.) make changes to the master file in /etc/cloud/templates/hosts.debian.tmpl
         This var makes it so that the hosts file is written at that address
         '''
-        with open(self.cwd / "ansible-setup" / "roles" / "Open5GS Config" / "vars" / "main.yml", "w") as f:
-            with open(self.cwd / "ansible-setup" / "roles" / "Netplan Config" / "vars" / "main.yml", "w") as g:
-                print(self.config["provider"])
-                if self.config["provider"].lower() == "vultr":
-                    self.config["dest_netplan_path"] = "/etc/netplan/50-cloud-init.yaml"
-                    
-                    g.write("vpc_v4_subnet_mask: "  + f'\"{self.config["vultr"]["vpc"]["v4_subnet_mask"]}\"' + "\n")
-                else:
-                    self.config["dest_netplan_path"] = "/etc/netplan/50-vagrant.yaml"
-                    
-                    if "use_netem" in self.config["vagrant"].keys() and self.config["vagrant"]["use_netem"]:
-                        netemConfig = {"netem": self.config["vagrant"]["netem"]}
-                        f.write(dump(netemConfig))
-                        f.write("\n")
-                        f.write("use_netem: true\n")
-                    else:
-                        f.write("use_netem: false\n")
-
-                f.write("provider: " + self.config["provider"] + "\n")
-                
-                g.write("dest_netplan_path: "  + f'\"{self.config["dest_netplan_path"]}\"' + "\n")
+        with open(self.cwd / "ansible-setup" / "roles" / "Network Config" / "vars" / "main.yml", "w") as g:
+            self.config["dest_netplan_path"] = "/etc/netplan/50-vagrant.yaml"
+            if self.config["provider"].lower() == "vultr":
+                self.config["dest_netplan_path"] = "/etc/netplan/50-cloud-init.yaml"
+            g.write("dest_netplan_path: "  + f'\"{self.config["dest_netplan_path"]}\"' + "\n")
                 
         if "create_services" not in self.config.keys():
             self.config["create_services"] = "true"
@@ -368,18 +417,22 @@ class AnsibleManager(CommandLineManager):
 
     def _writeInventory(self):
         if self.config["location"] == "cloud":
-            self.config["hplmn"]["ip"] = 22
-            self.config["hplmn"]["ip"] = 22
             user = "root"
         else:
             user = "vagrant"
+        
+        hosts = ""
+        for box in self.config["boxes"]:
+            host = self.hostTemplate.render(
+                name=box,
+                public_ip=self.config["boxes"][box]["public_ip"],
+                location=self.config["location"],
+                port=self.config["boxes"][box]["port"]
+            )
+            hosts += host
 
-        content = self.template.render(
-                hplmn_public_ip=self.config["hplmn"]["public_ip"],
-                hplmn_port=self.config["hplmn"]["port"],
-                vplmn_public_ip=self.config["vplmn"]["public_ip"],
-                vplmn_port=self.config["vplmn"]["port"],
-                provider=self.config["location"],
+        content = self.inventoryTemplate.render(
+                hosts=hosts,
                 ansible_user=user
                 )
 
