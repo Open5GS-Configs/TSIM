@@ -234,4 +234,4 @@ config_vultr.yaml
 logs.txt
 results/*
 ansible-setup/vars/vars.yaml
-5G_Setup/ansible-setup/inventory/*
+ansible-setup/inventory/*
