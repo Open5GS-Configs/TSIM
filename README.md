@@ -23,59 +23,68 @@ It requires a .yaml config file to store the required parameters for execution. 
 
 ```
 ---
-ogs:
-  repo: "<Open5GS repo>"
-  version: <the git version used when cloning the repo>
+boxes: 
+  # a list of machines to be created and their configurations
+  hplmn:
+      config: plmn # include the configuration named plmn defined below
+      
+      config_repo: <HPLMN Config repo> 
+      hosts_path: <Path to Hosts used in HPLMN>
+      # defines the private IPs for every interface this machine is included in
+      private_ip: 
+        sepp_link:
+          ip: "10.10.0.3"
+        topssim_hplmn: 
+          ip: "10.20.0.5"
 
-hplmn:
-  config_repo: <HPLMN Config repo> 
-  hosts_path: <Path to Hosts used in HPLMN>
-  test_script: <Path to your test script>
-  private_ip: "<IP for private network>"
-  region: "<region for HPLMN>"
+  vplmn:
+    config: plmn
 
+    config_repo: <VPLMN Config repo> 
+    hosts_path: <Path to Hosts used in VPLMN>
+    private_ip: 
+      sepp_link:
+        ip: "10.10.0.4"
+      topssim_vplmn: 
+        ip: "10.30.0.6"
+    
+  topssim:
+    provisioning_script: <path to script>
+    hostname: TOPSSIM_TEST
+    mongodb: true
+    
+    private_ip: 
+      topssim_hplmn: 
+        ip: "10.20.0.7"
+      topssim_vplmn: 
+        ip: "10.30.0.8"
 
-vplmn:
-  config_repo: <VPLMN Config repo> 
-  hosts_path: <Path to Hosts used in VPLMN>
-  test_script: <Path to your test script>
-  private_ip: "<IP for private network>"
-  region: "<region for VPLMN>"
+    vultr: 
+      region: yto
+      plan_id: "vc2-2c-2gb"
+    vagrant:
+      ram: 2048
+      cpu: 1
+      disk: 10
 
-################# If using Cloud VM Provider #################
-vultr:
-  vpc:
-    v4_subnet: "<subnet for private network>"
-    v4_subnet_mask: "<subnet mask for private network>"
-    region: "<region for private network>"
-  hplmn_region: "<region for HPLMN>"
-  vplmn_region: "<region for VPLMN>"
-  plan_id: "<plan used for machines>"
-##############################################################
-
-################# If using Local VM Provider #################
-vagrant:
-  ram: <RAM to be allocated to each VM (in MB)>
-  cpu: <CPU cores to be allocated to each VM>
-  disk: <Disk size of each VM (in GB)>
-
-  use_netem: <adds network emulation for local testing>
-  netem: <the following are example values>
-    delay: 
-      time: 100ms 
-      jitter: 10ms
-      correlation: 25%
-    distribution: normal
-    loss: 2% # % assumes random model
-    corrupt: 1%
-    duplicate: 1%
-    gap: 5
-    rate:
-      rate: 5kbit
-      packetoverheard: 20
-      cellsize: 100
-      celloverhead: 5
-##############################################################
+peering: 
+  # a list of connections between VMs to be created 
+  - name: "sepp_link"
+    members: [hplmn, vplmn]
+    description: "Connection between PLMNs"
+    v4_subnet: "10.10.0.0"
+    v4_subnet_mask: "28"
+    region: "yto"  
+  - name: "topssim_hplmn"
+    members: [topssim, hplmn]    
+    v4_subnet: "10.20.0.0"
+    v4_subnet_mask: "28"
+    region: "yto" 
+  - name: "topssim_vplmn"
+    members: [topssim, vplmn]    
+    v4_subnet: "10.30.0.0"
+    v4_subnet_mask: "28"
+    region: "yto"
 
 ###################### General Settings ######################
 create_services: <(true or false) creates service files in /etc/systemd/system and enables all components to run at boot>
@@ -84,7 +93,47 @@ provider: "<your VM provider (can either be Vultr, VB or VMWare)>"
 capture_packets: <pcap capture with tcpdump during testing>
 write_test_output: <for commands with repeats, the output is not printed to the console. It can instead by written to an output.txt file>
 copy_logs: <all log files from the open5gs/install/var/open5gs/ directory are copied to the host>
+##############################################################
+
+configs:
+  plmn: 
+    ogs:
+      repo: "https://github.com/open5gs/open5gs"
+      version: main
+      
+################# If using Cloud VM Provider #################
+    vultr:
+      region: "<region for box>"
+      plan_id: "<plan used for machines>"
+##############################################################
+
+################# If using Local VM Provider #################
+    vagrant:
+      ram: <RAM to be allocated to each VM (in MB)>
+      cpu: <CPU cores to be allocated to each VM>
+      disk: <Disk size of each VM (in GB)>
+
+      use_netem: <adds network emulation for local testing>
+      netem: <the following are example values>
+        delay: 
+          time: 100ms 
+          jitter: 10ms
+          correlation: 25%
+        distribution: normal
+        loss: 2% # % assumes random model
+        corrupt: 1%
+        duplicate: 1%
+        gap: 5
+        rate:
+          rate: 5kbit
+          packetoverheard: 20
+          cellsize: 100
+          celloverhead: 5
+##############################################################
 ```
+
+For **Vultr** VMs, it is necessary to add the API key as an 
+environment variable (VULTR_API_KEY), which will be read by the Python script. 
 
 For **Local** VMs, it is important to note that the ram is meant to be in MB and the disk in GB. Also, Vagrant automatically forwards localhost ports for ssh connections to the VMs. The default user in the VMs will be called "vagrant" and the default password is also "vagrant".
 
@@ -94,27 +143,29 @@ A yaml file that gives commands to be executed in each machine. It is executed s
 ```
 ---
 - where: hplmn
-  function: udm
   cmd: <a command>
-  logs: 
+  logs: # here the logs of the functions outlined below will be captured 
       - func: udm
         lines: 5
       - func: sepp
         lines: 100
+  repeats: 10 # repeats makes multiple indicators to be measured by repeating the operation multiple times
       
 - where: vplmn
-  function: amf
   cmd: <another command>
-  logs: 
+  logs:
       - amf
       - udm
       - sepp
 
 - where: vplmn
-  function: amf
   cmd: registration.simple-test
   config: examples.gnb-001-01-ue-999-70
 
+- where: vplmn
+  script: <path to testing script>
+
+# logs to be captured when running in TUI mode
 - logs:
     - where: vplmn
       func: amf
@@ -122,6 +173,11 @@ A yaml file that gives commands to be executed in each machine. It is executed s
       func: ausf
     - where: vplmn
       func: sepp
+
+# a list of VMs for capturing packets if the capture_packets option is enabled
+- pcap:
+    - hplmn
+    - vplmn
 ```
 
 The first task executes a command in the HPLMN and collects the last 5 logs from the UDM and the last 100 from the SEPP.
@@ -130,6 +186,14 @@ The last task runs the simple registration test with one of the example configur
 After that, the list of logs is used to stream the live logs from the components during testing using the TUI.
 
 A timeout and polling time can also be specified with each command. The default timeout is 120 seconds and polling is 10 seconds. 
+
+#### Gathering Results: 
+
+- When a command is repeated multiple times, its output is not printed to the terminal but is recorded in the output file. Simultaneously, the time of execution of each command is recorded in a .csv file.
+
+- Before testing begins, a tcpdump command starts capturing all interfaces for the VMs listed in the run file. After testing, the resulting pcap file is copied to the host machine.
+
+- Open5GS log files are fetched from the install/var/log/open5gs directory
 
 The -test command line argument just runs the commands from the run file.
 

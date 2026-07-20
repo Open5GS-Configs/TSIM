@@ -135,6 +135,8 @@ class AnsibleManager(CommandLineManager):
                 command.append("--tags")
                 command.append(tags[0].replace(" ", ", "))
             res = self.runCommand(command, cwd=(self.cwd / "ansible-setup"))
+            if res.returncode != 0:
+                raise Exception("Ansible execution exited incorrectly!")
         except Exception as e:
             import traceback
             traceback.print_exc()
@@ -186,21 +188,28 @@ class AnsibleManager(CommandLineManager):
             if "where" not in cmdKeys:
                 continue
 
-            cmdTest = cmd["cmd"].split(".")
-            if len(cmdTest) == 2 and cmdTest[0] in TESTS.keys() and cmdTest[1] in TESTS[cmdTest[0]]:
-                if "config" not in cmdKeys:
-                    self._raiseMissingConfig(f"Configuration for test ({cmdTest}) was not provided")
-                else:
-                    configTest = cmd["config"].split(".")
-                    if len(configTest) == 2 and configTest[0] in CONFIGS.keys() and configTest[1] in CONFIGS[configTest[0]]["configs"]:
-                        cmd["config"] = f'/root/open5gs/build/configs/{CONFIGS[configTest[0]]["path"]}/{configTest[1]}.yaml'
+            if "cmd" in cmd:
+                cmdTest = cmd["cmd"].split(".")
+                if len(cmdTest) == 2 and cmdTest[0] in TESTS.keys() and cmdTest[1] in TESTS[cmdTest[0]]:
+                    if "config" not in cmdKeys:
+                        self._raiseMissingConfig(f"Configuration for test ({cmdTest}) was not provided")
+                    else:
+                        configTest = cmd["config"].split(".")
+                        if len(configTest) == 2 and configTest[0] in CONFIGS.keys() and configTest[1] in CONFIGS[configTest[0]]["configs"]:
+                            cmd["config"] = f'/root/open5gs/build/configs/{CONFIGS[configTest[0]]["path"]}/{configTest[1]}.yaml'
 
-                cmd["cmd"] = f'/root/open5gs/build/tests/{cmdTest[0]}/{cmdTest[0]} -c {cmd["config"]} {cmdTest[1]}'
+                    cmd["cmd"] = f'/root/open5gs/build/tests/{cmdTest[0]}/{cmdTest[0]} -c {cmd["config"]} {cmdTest[1]}'
+                
+                if "module" not in cmdKeys:
+                    cmd["module"] = DEFAULT_MODULE
+                
+            
+            if "script" in cmd:
+                cmd["module"] = "script"
+                cmd["cmd"] = cmd["script"]
 
             if "timeout" not in cmdKeys:
                 cmd["timeout"] = TEST_COMMAND_TIMEOUT
-            if "module" not in cmdKeys:
-                cmd["module"] = DEFAULT_MODULE
             if "poll" not in cmdKeys:
                 cmd["poll"] = TEST_COMMAND_POLL_TIME
 
@@ -218,7 +227,11 @@ class AnsibleManager(CommandLineManager):
             timestamps = {}
             finished = True
             for r in range(repeats):
-                res = self.runAdHocCommand(cmd["where"], cmd["module"], cmd["cmd"], name, B=cmd['timeout'], P=cmd['poll'], capture_output=repeatRun, text=repeatRun)
+                if cmd["module"] != "script":
+                    res = self.runAdHocCommand(cmd["where"], cmd["module"], cmd["cmd"], name, B=cmd['timeout'], P=cmd['poll'], capture_output=repeatRun, text=repeatRun)
+                else:
+                    res = self.runAdHocCommand(cmd["where"], cmd["module"], cmd["cmd"], name, capture_output=repeatRun, text=repeatRun)
+                
                 if res.returncode != 0: 
                     self.consolePrint("[red bold] Error [/] presented by command: " + cmd["cmd"])
                     finished = False
@@ -258,8 +271,8 @@ class AnsibleManager(CommandLineManager):
 
             if "logs" not in cmdKeys:
                 continue 
-                
-            self.getLogs(cmd["where"], cmd["logs"])
+            elif finished:
+                self.getLogs(cmd["where"], cmd["logs"])
         
         with open(timingPath / "timing.csv", "a", newline='') as timingCSV:
             fieldnames = []

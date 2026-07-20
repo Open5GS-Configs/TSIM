@@ -98,21 +98,20 @@
   tags: ['install_ogs']
 
 - name: Build Open5GS with Ninja
-  shell: ninja -C build 
-  args:
-    chdir: /root/open5gs
+  shell: |
+    cd /root/open5gs
+    ninja -C build
   register: build_result   
   failed_when: build_result.rc != 0 
   become: yes
   tags: ['install_ogs']  
-
+  
 - name: Ninja Install Open5GS
   ansible.builtin.command: 
     cmd: ninja install
     chdir: /root/open5gs/build
   become: yes
   tags: ['install_ogs']
-
 
 #- name: Install NodeJs prerequisites
 #  ansible.builtin.apt:
