@@ -285,6 +285,9 @@ class setupTOPSSIM(CommandLineManager):
         if "ansible_tags" not in configKeys:
             self.config["ansible_tags"] = ""
 
+        self.config["hplmn"]["hostname"] = "HPLMNTEST"
+        self.config["vplmn"]["hostname"] = "VPLMNTEST"
+
         return True
 
 

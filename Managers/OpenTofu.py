@@ -138,3 +138,4 @@ class OpenTofu(InfrastructureManager, CommandLineManager):
                 print("Attribute Error while writing OpenTofu variables: " + e)
 
         print("Vars created successfully!")
+            
