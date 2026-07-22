@@ -201,13 +201,13 @@ The -test command line argument just runs the commands from the run file.
 
 ### Running the program
 You can call it using:
-`python3 topssim_setup.py  -c /directory/your_config_file.yaml -r /directory/your_run_file.yaml`
+`python3 main.py  -c /directory/your_config_file.yaml -r /directory/your_run_file.yaml`
 
-You can check other command-line options with `python3 topssim_setup.py -h`.
+You can check other command-line options with `python3 main.py -h`.
 
 Some examples are:
 To run just the configuration and testing stages of Ansible on already existing machines:
-`python3 topssim_setup.py  -c /directory/your_config_file.yaml -r /directory/your_run_file.yaml -ansible --ansible_tags "config_stage testing_stage"`
+`python3 main.py  -c /directory/your_config_file.yaml -r /directory/your_run_file.yaml -ansible --ansible_tags "config_stage testing_stage"`
 
 ### TUI
 
