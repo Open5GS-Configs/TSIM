@@ -99,17 +99,8 @@ class Config(CommandLineManager):
             "verbose": ("verbose",),
             "func": ("func",),
             "lines": ("lines",),
-            "ogs_repo": ("ogs", "repo"),
-            "ogs_version": ("ogs", "version"),
-            "vultr_plan_id": ("vultr", "plan_id"),
             "vultr_api_key": ("vultr", "api_key"),
-            "vpc_v4_subnet": ("vultr", "vpc", "v4_subnet"),
-            "vpc_v4_subnet_mask": ("vultr", "vpc", "v4_subnet_mask"),
-            "vpc_region": ("vultr", "vpc", "region"),
             "ansible_tags": ("ansible_tags",),
-            "ram": ("vagrant", "ram",),
-            "disk": ("vagrant", "disk",), 
-            "cpu": ("vagrant", "cpu",), 
         }
 
         for arg_name, path in overrides.items():
@@ -150,17 +141,8 @@ class Config(CommandLineManager):
         self.parser.add_argument("--capture_packets", action='store_true', help="Captures network packets from the VMs during testing and copies them over to the host machine")
         self.parser.add_argument('--ansible_tags', nargs='+', help="Tells ansible which stages to run. Options: install_stage, config_stage, testing_stage, services_stage, ogstun, install_ogs")
 
-        # Local Arguments
-        self.parser.add_argument("--ram", help="The RAM used for the VMs (LOCAL ONLY)")
-        self.parser.add_argument("--disk", help="The disk size allocated to the VMs (LOCAL ONLY)")
-        self.parser.add_argument("--cpu", help="The amount of CPU allocated to the VMs (LOCAL ONLY)")
-
         # Vultr Arguments
-        self.parser.add_argument("--vpc_region", help="The region where the virutal private network is created")
         self.parser.add_argument("--vultr_api_key", help="Personal Vultr API key")
-        self.parser.add_argument("--vultr_plan_id", help="The plan used to create the VMs")
-        self.parser.add_argument("--vpc_v4_subnet", help="The subnet used to create the VPC betwene the VMs")
-        self.parser.add_argument("--vpc_v4_subnet_mask", help="The mask for the VPC subnet")
 
         # Ad Hoc Arguments
         self.parser.add_argument("--w", default="all", help="Which VMs to run ad-hoc commands on (all, hplmn, or vplmn), with a default value of all")
