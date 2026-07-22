@@ -221,10 +221,11 @@ It is also useful to know that OpenTofu, Vagrant, and Ansible provide CLI tools.
 
 1. Ansible:    
 
-`ansible all -m ping ` to test connectivity    
-`ansible-playbook topssim_setup.yaml` to run the playbook   
-`ansible-inventory --list-hosts` to see the hosts    
-`ansible-galaxy role list` to see the installed roles  
+- `ansible all -m ping ` to test connectivity    
+- `ansible-playbook topssim_setup.yaml` to run the playbook   
+- `ansible-inventory --list-hosts` to see the hosts    
+- `ansible-galaxy role list` to see the installed roles  
+- `ansible-playbook -i "<IP address>," topssim_setup.yaml -e "ogs=true, ... <other variables>" --tags "install_stage, <any tags>"` to run a part of the playbook on any available machine 
 
 - To add a SSH key passphrase to be recognized by Ansible when creating the SSH connection to the hosts:    
 Start SSH Agent:     
@@ -234,15 +235,15 @@ And add private key:
 
 
 2. OpenTofu:   
-`tofu show`    
-`tofu state list`    
-`tofu state show vultr_vpc.sepp-link` (the address of the instances lives in _vultr-opentofu/vultr_resources.tf_)   
+- `tofu show`    
+- `tofu state list`    
+- `tofu state show vultr_vpc.sepp-link` (the address of the instances lives in _vultr-opentofu/vultr_resources.tf_)   
 
 
 3. Vagrant:
-`vagrant up`
-`vagrant ssh-config`
-`vagramt destroy`
+- `vagrant up`
+- `vagrant ssh-config`
+- `vagramt destroy`
 
 ### Troubleshooting
 
