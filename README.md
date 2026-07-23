@@ -72,19 +72,18 @@ peering:
   - name: "sepp_link"
     members: [hplmn, vplmn]
     description: "Connection between PLMNs"
+### if using Vultr ###
     v4_subnet: "10.10.0.0"
     v4_subnet_mask: "28"
-    region: "yto"  
+    region: "yto"
+######################
   - name: "topssim_hplmn"
-    members: [topssim, hplmn]    
+    members: [topssim, hplmn]
+### if using Vultr ###
     v4_subnet: "10.20.0.0"
     v4_subnet_mask: "28"
-    region: "yto" 
-  - name: "topssim_vplmn"
-    members: [topssim, vplmn]    
-    v4_subnet: "10.30.0.0"
-    v4_subnet_mask: "28"
     region: "yto"
+######################
 
 ###################### General Settings ######################
 create_services: <(true or false) creates service files in /etc/systemd/system and enables all components to run at boot>
