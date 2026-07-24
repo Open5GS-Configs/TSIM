@@ -2,8 +2,8 @@ import asyncio
 import subprocess
 import sys
 
-from textual.app import App, ComposeResult
-from textual.widgets import Header, Footer, Button, RichLog, Static
+from textual.app import App
+from textual.widgets import Header, Footer, Button, Static, RichLog
 from textual.containers import VerticalScroll, Vertical
 from textual.message import Message
 from textual import work
@@ -76,7 +76,7 @@ class TSim(App):
             childLog.styles.height = f"{100/self.numLogs}%"
     
     
-    def compose(self) -> ComposeResult: 
+    def compose(self): 
         yield Main_Output()
 
         with Vertical(classes="right-column"):

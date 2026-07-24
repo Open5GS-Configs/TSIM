@@ -15,6 +15,7 @@ hplmn:
     config_repo: https://github.com/Open5GS-Configs/HPLMN-Config
   
     use_hosts_path: True
+  
     hosts_path: /home/aeeguiguren/Documents//hosts/hplmn/hosts
   
   
@@ -29,3 +30,6 @@ vplmn:
     use_hosts_path: True
   
     hosts_path: /home/aeeguiguren/Documents/hosts/vplmn/hosts
+  
+
+provider: vmware
