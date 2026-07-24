@@ -11,7 +11,7 @@ This project uses:
 
 Notes for VMWare:
     <br>- For use with VMWare, a plugin needs to be installed [here](https://developer.hashicorp.com/vagrant/install/vmware).
-    <br>- Before creating the VMs, in the control panel for VMware a Host-only network needs to be created with DHCP disabled with the adapter name "vmnet5" to create the private connection between VMs
+    <br>- Before creating the VMs, in the control panel for VMware a Host-only network needs to be created with DHCP disabled with the adapter name the same as the name in the peering list to create the private connection between VMs.
 
 
 It clones and builds an Open5GS repo into /root/open5gs/ and copies the specified config files into /root/open5gs/install/etc/open5gs/ (the config files need to take this into account for pathing).

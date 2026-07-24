@@ -9,7 +9,7 @@ from textual.message import Message
 from textual import work
 
 
-OPEN5GS_FUNC = ["amf", "mme", "pcf", "sepp1old", "sepp2", "smf", "udm", "ausf", "nrf", "pcrf", "sepp1", "sgwc", "udr", "bsf", "hss", "nssf", "scp", "sgwu", "upf"]
+OPEN5GS_FUNC = ["amf", "mme", "pcf", "sepp2", "smf", "udm", "ausf", "nrf", "pcrf", "sepp1", "sgwc", "udr", "bsf", "hss", "nssf", "scp", "sgwu", "upf"]
 
 
 class Main_Output(RichLog):
