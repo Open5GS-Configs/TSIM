@@ -136,6 +136,7 @@ class AnsibleManager(CommandLineManager):
             if tags and len(tags) != 0:
                 command.append("--tags")
                 command.append(tags[0].replace(" ", ", "))
+            command.append(f'--private-key={self.config["ansible_priv_ssh_key"]}')
             res = self.runCommand(command, cwd=(self.cwd / "ansible-setup"))
             if res.returncode != 0:
                 raise Exception("Ansible execution exited incorrectly!")
@@ -408,6 +409,7 @@ class AnsibleManager(CommandLineManager):
             cwd = self.cwd / "ansible-setup"
         if become:
             command.append("-b")
+        command.append(f'--private-key={self.config["ansible_priv_ssh_key"]}')
         #if self.config["verbose"]: command.append("-v")
         return self.runCommand(command, cwd=cwd, name=name, titleJustify=titleJustify, capture_output=capture_output, text=text, ruleAndResult=ruleAndResult)
 

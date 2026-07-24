@@ -296,21 +296,17 @@ class setupTOPSSIM(CommandLineManager):
     def _addAnsibleSSHKey(self):
         if "ansible_ssh_key" not in self.config:
             sshConfig = Path(getenv("HOME")).joinpath(".ssh")
-            privateSSHPath = sshConfig.joinpath("id_rsa")
-            self.config["ansible_ssh_key"] = privateSSHPath.with_suffix(".pub")
-        sshPath = Path(self.config["ansible_ssh_key"]):
-
-        if not sshPath.exists(): 
-            return 
-        else:
-            publicSSHPath = self.config["ansible_ssh_key"]
+            self.config["ansible_priv_ssh_key"] = sshConfig.joinpath("id_rsa")
+            self.config["ansible_ssh_key"] = self.config["ansible_priv_ssh_key"].with_suffix(".pub")
         
+        publicSSHPath = self.config["ansible_ssh_key"]
 
         if not publicSSHPath.is_file():
             print("SSH Key not found. Generating new key... \n")
             run(["ssh-keygen", "-t", "ed25519", "-N", "", "-f", privateSSHPath])
             print("Created SSH key for Control Node!\n")
         else:
+            self.config["ansible_priv_ssh_key"] = self.config["ansible_ssh_key"].with_suffix("")
             print("SSH key for Control Node was found\n")
 
         ControlNodeSSHKey = "" 

@@ -88,6 +88,7 @@ peering:
 ###################### General Settings ######################
 create_services: <(true or false) creates service files in /etc/systemd/system and enables all components to run at boot>
 user_ssh_key: "<SSH key of the user>"
+ansible_ssh_key: "<path to the ssh key that should be transferred to the VMs for ansible connection (default is ~/.ssh/id_rsa.pub)>"
 provider: "<your VM provider (can either be Vultr, VB or VMWare)>"
 capture_packets: <pcap capture with tcpdump during testing>
 write_test_output: <for commands with repeats, the output is not printed to the console. It can instead by written to an output.txt file>
