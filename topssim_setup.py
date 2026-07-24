@@ -219,6 +219,11 @@ class setupTOPSSIM(CommandLineManager):
                     if p not in self.config["boxes"][box]["vagrant"]:
                         self._raiseMissingConfig(p)
 
+                if "use_netem" not in self.config["boxes"][box]["vagrant"]:
+                    self.config["boxes"][box]["vagrant"]["use_netem"] = False
+                    self.config["boxes"][box]["vagrant"]["netem"] = {}
+
+
             self.strategy = Vagrant(self.config, self.cwd)
         
         else:
@@ -284,9 +289,6 @@ class setupTOPSSIM(CommandLineManager):
         
         if "ansible_tags" not in configKeys:
             self.config["ansible_tags"] = ""
-
-        self.config["hplmn"]["hostname"] = "HPLMNTEST"
-        self.config["vplmn"]["hostname"] = "VPLMNTEST"
 
         return True
 

@@ -60,7 +60,8 @@ provisioning_script: {{ provisioning_script }}
 {% if location == "local" %}
 use_netem: {{ use_netem }}
 {% if use_netem %}
-netem: {{  netem  }}
+netem: 
+{{  netem  }}
 {% endif %}
 {% endif %}
 """

@@ -2,6 +2,8 @@ import asyncio
 import subprocess
 import sys
 
+from pathlib import Path
+
 from textual.app import App
 from textual.widgets import Header, Footer, Button, Static, RichLog
 from textual.containers import VerticalScroll, Vertical
@@ -15,6 +17,8 @@ OPEN5GS_FUNC = ["amf", "mme", "pcf", "sepp1old", "sepp2", "smf", "udm", "ausf", 
 class Main_Output(RichLog):
 
     def __init__(self) -> None:
+        self.cwd = Path.cwd()
+
         super().__init__(
             id="mainOutput",
             highlight=True,
@@ -43,7 +47,7 @@ class TSim(App):
         self.config = config
         self.runCmd = run
         self.cwd = cwd
-        self.f = open("/home/agustin/5G_Setup/tui/logs.txt", "w")
+        self.f = open(self.cwd / Path("tui/logs.txt"), "w")
 
         self.arguments = sys.argv
         if "--tui" in self.arguments: self.arguments.remove("--tui")

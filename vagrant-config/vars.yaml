@@ -1,35 +1,45 @@
-box:
+general:
+    ansible_ssh_key: ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAICfy//mrfB0li+kQoLhKHaE9MUwJTQXURLzj/ctTpj6I aeeguiguren@segrecedt097
+    user_ssh_key: ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAILtDJ010ycSBEjoVu8XP2ob/z20TCd5xqsIUpNaielao root@DESKTOP-6QUR9Q3
+    provider: vb
+
+boxes:
+ hplmn:
+    private_ip: 
+      sepp_link: 10.10.0.3
+      topssim_hplmn: 10.20.0.5
+
+    hostname: "HPLMN-TEST"
     memory: 4096
     disk: 25
     cpu: 2
-    ansible_tags: 
-    ansible_ssh_key: ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAICfy//mrfB0li+kQoLhKHaE9MUwJTQXURLzj/ctTpj6I aeeguiguren@segrecedt097
-    user_ssh_key: ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAILtDJ010ycSBEjoVu8XP2ob/z20TCd5xqsIUpNaielao root@DESKTOP-6QUR9Q3
-    provider: vmware
 
-hplmn:
-    private_ip: 10.10.0.3
-    hostname: "HPLMNTEST"
-    use_config_path: False
-  
-    config_repo: https://github.com/Open5GS-Configs/HPLMN-Config
-  
-    use_hosts_path: True
-  
-    hosts_path: /home/aeeguiguren/Documents//hosts/hplmn/hosts
-  
-  
+ vplmn:
+    private_ip: 
+      sepp_link: 10.10.0.4
+      topssim_vplmn: 10.30.0.6
 
-vplmn:
-    private_ip: 10.10.0.4
-    hostname: "VPLMNTEST"
-    use_config_path: False
-  
-    config_repo: https://github.com/Open5GS-Configs/VPLMN-Config
-  
-    use_hosts_path: True
-  
-    hosts_path: /home/aeeguiguren/Documents/hosts/vplmn/hosts
-  
+    hostname: "VPLMN-TEST"
+    memory: 4096
+    disk: 25
+    cpu: 2
 
-provider: vmware
+ topssim:
+    private_ip: 
+      topssim_hplmn: 10.20.0.7
+      topssim_vplmn: 10.30.0.8
+
+    hostname: "TOPSSIM-TEST"
+    memory: 2048
+    disk: 10
+    cpu: 1
+
+ test:
+    private_ip: 
+
+    hostname: "TEST-TEST"
+    memory: 2048
+    disk: 10
+    cpu: 1
+
+
