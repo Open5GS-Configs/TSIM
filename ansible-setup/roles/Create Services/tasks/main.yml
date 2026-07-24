@@ -4,6 +4,7 @@
   ansible.builtin.copy:
     src: files/
     dest: /etc/systemd/system
+  when: (inventory_hostname in groups['hplmn']) or inventory_hostname in groups['vplmn']
 
 - name: Copy HPLMN SEPP service file
   ansible.builtin.copy:
@@ -23,15 +24,18 @@
   ansible.builtin.file:
     path: /etc/systemd/system/hplmn/
     state: absent
+  when: (inventory_hostname in groups['hplmn']) or inventory_hostname in groups['vplmn']
 
 - name: Remove unnecessary folder (VPLMN)
   ansible.builtin.file:
     path: /etc/systemd/system/vplmn/
     state: absent
+  when: (inventory_hostname in groups['hplmn']) or inventory_hostname in groups['vplmn']
 
 - name: Force systemd to reread configs 
   ansible.builtin.systemd_service:
     daemon_reload: true
+  when: (inventory_hostname in groups['hplmn']) or inventory_hostname in groups['vplmn']
 
 - name: Make sure service is running and enable it 
   ansible.builtin.systemd_service:
@@ -39,3 +43,4 @@
     enabled: true
     name: "{{ item }}"
   loop: "{{ services }}"
+  when: (inventory_hostname in groups['hplmn']) or inventory_hostname in groups['vplmn']

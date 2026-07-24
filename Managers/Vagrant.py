@@ -7,59 +7,36 @@ from .CommandLineManager import CommandLineManager
 
 VARS_PATH = "vagrant-config/vars.yaml"
 
-VARS = """box:
-    memory: {{ memory }}
-    disk: {{ disk }}
-    cpu: {{ cpu }}
-    ansible_tags: {{ ansible_tags }}
+VARS = """general:
     ansible_ssh_key: {{ ansible_ssh_key }}
     user_ssh_key: {{ user_ssh_key }}
     provider: {{ provider }}
 
-hplmn:
-    private_ip: {{ h_ip }}
-    hostname: "{{ h_hostname }}"
-    use_config_path: {{ h_use_config_path }}
-  {% if h_use_config_path %}
-    config_path: {{ h_config_path }}
-  {% else %}
-    config_repo: {{ h_config_repo }}
-  {% endif %}
-    use_hosts_path: {{ h_use_hosts_path }}
-  {% if h_use_hosts_path %}
-    hosts_path: {{ h_hosts_path }}
-  {% else %}
-    hosts_repo: {{ h_hosts_repo }}
-  {% endif %}
-  
-
-vplmn:
-    private_ip: {{ v_ip }}
-    hostname: "{{ v_hostname }}"
-    use_config_path: {{ v_use_config_path }}
-  {% if v_use_config_path %}
-    config_path: {{ v_config_path }}
-  {% else %}
-    config_repo: {{ v_config_repo }}
-  {% endif %}
-    use_hosts_path: {{ v_use_hosts_path }}
-  {% if v_use_hosts_path %}
-    hosts_path: {{ v_hosts_path }}
-  {% else %}
-    hosts_repo: {{ v_hosts_repo }}
-  {% endif %}
-
-provider: {{ provider }}
+boxes:
+{{ boxes }}
 
 """
 
+BOX = """ {{ name }}:
+    private_ip: 
+{{ private_ip }}
+    hostname: "{{ hostname }}"
+    memory: {{ memory }}
+    disk: {{ disk }}
+    cpu: {{ cpu }}
+"""
+
+PRIVATE_IP = """      {{name}}: {{ ip }}
+"""
 
 class Vagrant(InfrastructureManager, CommandLineManager):
     def __init__(self, config, cwd):
         super().__init__(config)
 
         environment = jinja2.Environment()
-        self.template = environment.from_string(VARS)
+        self.varsTemplate = environment.from_string(VARS)
+        self.boxTemplate = environment.from_string(BOX)
+        self.networkTemplate = environment.from_string(PRIVATE_IP)
 
         self.cwd = cwd
 
@@ -67,12 +44,12 @@ class Vagrant(InfrastructureManager, CommandLineManager):
     def callInfManager(self):
         self._populateVars()
         
-        if self.runCommand(["vagrant", "up"], cwd="vagrant-config").returncode != 0:
+        if self.runCommand(["vagrant", "up"], cwd=(self.cwd / "vagrant-config")).returncode != 0:
             raise Exception("Error applying Vagrant plan") 
 
-        print("\n\nSuccesfully created HPLMN and VPLMN machines!\n\n")
-
-        self.readIPs()
+        print("\n\nSuccesfully created the following machines:\n")
+        for box in self.config["boxes"]: print(f"- {box.upper()}") 
+        print("\n\n")
 
         print("\n\n Vagrant completed succesfully!")
 
@@ -80,30 +57,31 @@ class Vagrant(InfrastructureManager, CommandLineManager):
     def _populateVars(self):
         print("Populating Vagrant Vars...")
 
-        content = self.template.render(
+        boxes = ""
+        for box in self.config["boxes"]:
+          private_ip = ""
+          for net in self.config["boxes"][box]["private_ip"]:
+            private_ip += self.networkTemplate.render(
+              name=net,
+              ip=self.config["boxes"][box]["private_ip"][net]["ip"]
+            )
+            private_ip += "\n"
+
+          boxes += self.boxTemplate.render(
+            name=box,
+            private_ip=private_ip,
+            hostname=self.config["boxes"][box]["hostname"],
+            memory=self.config["boxes"][box]["vagrant"]["ram"],
+            disk=self.config["boxes"][box]["vagrant"]["disk"],
+            cpu=self.config["boxes"][box]["vagrant"]["cpu"]
+          )
+          boxes += "\n\n"
+
+        content = self.varsTemplate.render(
             provider=self.config["provider"],
-            memory=self.config["vagrant"]["ram"],
-            disk=self.config["vagrant"]["disk"],
-            cpu=self.config["vagrant"]["cpu"],
-            ansible_tags=self.config["ansible_tags"],
             ansible_ssh_key=self.config["ansible_ssh_key"],
             user_ssh_key=self.config["user_ssh_key"],
-            h_ip=self.config["hplmn"]["private_ip"],
-            h_hostname="HPLMNTEST",
-            h_use_config_path=(self.config["hplmn"]["config_path"] != None),
-            h_config_path=self.config["hplmn"]["config_path"],
-            h_config_repo=self.config["hplmn"]["config_repo"],
-            h_use_hosts_path=(self.config["hplmn"]["hosts_path"] != None),
-            h_hosts_path=self.config["hplmn"]["hosts_path"],
-            h_hosts_repo=self.config["hplmn"]["hosts_repo"],
-            v_ip=self.config["vplmn"]["private_ip"],
-            v_hostname="VPLMNTEST",
-            v_use_config_path=(self.config["vplmn"]["config_path"] != None),
-            v_config_path=self.config["vplmn"]["config_path"],
-            v_config_repo=self.config["vplmn"]["config_repo"],
-            v_use_hosts_path=(self.config["vplmn"]["hosts_path"] != None),
-            v_hosts_path=self.config["vplmn"]["hosts_path"],
-            v_hosts_repo=self.config["vplmn"]["hosts_repo"]
+            boxes=boxes
         )
 
         with open(self.cwd / VARS_PATH, 'w') as f:

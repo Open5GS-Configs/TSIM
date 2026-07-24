@@ -1,9 +1,15 @@
 import jinja2
+import csv 
+import sys
 
+from datetime import datetime, timedelta
 from yaml import dump
+from json import loads
 from pathlib import Path
 from .CommandLineManager import CommandLineManager
 
+
+DATE_FORMAT = "%H:%M:%S.%f"
 
 TEST_COMMAND_TIMEOUT = 120
 TEST_COMMAND_POLL_TIME = 10
@@ -15,20 +21,48 @@ all:
   vars:
     ansible_user: {{ ansible_user }}
   children: 
-    hplmn:  
+{{ hosts }}
+"""
+
+HOST = """    {{ name }}:  
       hosts:
-        hplmn_node_1: 
-          ansible_host: {{ hplmn_public_ip }}
-        {% if provider == "local" %}
-          ansible_port: {{ hplmn_port }}
+        {{ name }}_node_1: 
+          ansible_host: {{ public_ip }}
+        {% if location == "local" %}
+          ansible_port: {{ port }}
         {% endif %}
-    vplmn:  
-      hosts:
-        vplmn_node_1:
-          ansible_host: {{ vplmn_public_ip }}
-        {% if provider == "local" %}
-          ansible_port: {{ vplmn_port }}
-        {% endif %}
+
+"""
+
+GROUP_VARS = """interface_num: {{ interface_num }}
+private_ip: 
+{{ private_ip }}
+mongodb: {{ mongodb }}
+ogs: {{ ogs }}
+{% if ogs %}
+ogs_repo: {{ ogs_repo }}
+ogs_version: {{ ogs_version }}
+use_config_path: {{ use_config_path }}
+{% if use_config_path %}
+config_path: {{ config_path }}
+{% else %}
+config_repo: {{ config_repo }}
+{% endif %}
+use_hosts_path: {{ use_hosts_path }}
+{% if use_hosts_path %}
+hosts_path: {{ hosts_path }}
+{% else %}
+hosts_repo: {{ hosts_repo }}
+{% endif %}
+{% else %}
+provisioning_script: {{ provisioning_script }}
+{% endif %}
+{% if location == "local" %}
+use_netem: {{ use_netem }}
+{% if use_netem %}
+netem: {{  netem  }}
+{% endif %}
+{% endif %}
 """
 
 VALID_FUNC = ["amf", "bsf", "mme", "nssf", "pcrf", "sepp1", "sepp2", "sgwu", "tls", "udr", "ausf", "hss", "nrf", "pcf", "scp", "sgwc", "smf", "udm", "upf"]
@@ -78,7 +112,9 @@ class AnsibleManager(CommandLineManager):
         self.cwd = cwd
 
         environment = jinja2.Environment()
-        self.template = environment.from_string(INVENTORY)
+        self.inventoryTemplate = environment.from_string(INVENTORY)
+        self.hostTemplate = environment.from_string(HOST)
+        self.groupvarsTemplate = environment.from_string(GROUP_VARS)
 
 
     def configure(self, writeInventory):
@@ -93,60 +129,256 @@ class AnsibleManager(CommandLineManager):
 
     def setup(self, tags):
         try:
-            command = ["ansible-playbook", "topssim_setup.yaml", "-v"]
+            command = ["ansible-playbook", "topssim_setup.yaml"]
+
+            #if self.config["verbose"]: command.append("-v")
             if tags and len(tags) != 0:
                 command.append("--tags")
                 command.append(tags[0].replace(" ", ", "))
             res = self.runCommand(command, cwd=(self.cwd / "ansible-setup"))
+            if res.returncode != 0:
+                raise Exception("Ansible execution exited incorrectly!")
         except Exception as e:
             import traceback
             traceback.print_exc()
-        #if res.returncode != 0:
-        #    raise Exception("Ansible Playbook presented an error!")
 
 
     def runFileCommands(self):
+        """
+        Results: 
+        - logs
+        - output
+        - pcap
+        - timings
+        """
+        now = datetime.now().strftime("%Y_%m_%d_%H_%M_%S")
+        if len(self.run) > 0: 
+            resultsPath = self.cwd / "results" / f"results-{now}" 
+            timingPath = resultsPath / "timing"
+            resultsPath.mkdir()
+            timingPath.mkdir()
+        else:
+            return
+
+        if self.config["capture_packets"]: 
+            pcapWhere = ""
+            if "pcap" not in self.run:
+                pcapWhere = "all"
+            else:
+                for box in self.run["pcap"]:
+                    pcapWhere += box + ", "
+                pcapWhere = pcapWhere[:-2]
+            
+            self.runAdHocCommand(pcapWhere,
+                                             "ansible.builtin.shell", 
+                                            r"rm -f /tmp/capture.pcap & \
+                                            setsid tcpdump -i any -w /tmp/capture.pcap -U >/dev/null 2>&1 & \
+                                            echo $! >/tmp/tcpdump.pid", 
+                                            "Start testing packet capture", capture_output=True, text=True, become=True)
+        
+        timing = []
+        maxRepeats = 1
+        for cmd in self.run:
+            if "repeats" in cmd.keys():
+                if int(cmd["repeats"]) > maxRepeats:
+                    maxRepeats = int(cmd["repeats"])
+
         for cmd in self.run:
             cmdKeys = cmd.keys()
-
+            script = False
             if "where" not in cmdKeys:
                 continue
 
-            cmdTest = cmd["cmd"].split(".")
-            if len(cmdTest) == 2 and cmdTest[0] in TESTS.keys() and cmdTest[1] in TESTS[cmdTest[0]]:
-                if "config" not in cmdKeys:
-                    self._raiseMissingConfig(f"Configuration for test ({cmdTest}) was not provided")
-                else:
-                    configTest = cmd["config"].split(".")
-                    if len(configTest) == 2 and configTest[0] in CONFIGS.keys() and configTest[1] in CONFIGS[configTest[0]]["configs"]:
-                        cmd["config"] = f'/root/open5gs/build/configs/{CONFIGS[configTest[0]]["path"]}/{configTest[1]}.yaml'
+            if "cmd" in cmd:
+                cmdTest = cmd["cmd"].split(".")
+                if len(cmdTest) == 2 and cmdTest[0] in TESTS.keys() and cmdTest[1] in TESTS[cmdTest[0]]:
+                    if "config" not in cmdKeys:
+                        self._raiseMissingConfig(f"Configuration for test ({cmdTest}) was not provided")
+                    else:
+                        configTest = cmd["config"].split(".")
+                        if len(configTest) == 2 and configTest[0] in CONFIGS.keys() and configTest[1] in CONFIGS[configTest[0]]["configs"]:
+                            cmd["config"] = f'/root/open5gs/build/configs/{CONFIGS[configTest[0]]["path"]}/{configTest[1]}.yaml'
 
-                cmd["cmd"] = f'/root/open5gs/build/tests/{cmdTest[0]}/{cmdTest[0]} -c {cmd["config"]} {cmdTest[1]}'
+                    cmd["cmd"] = f'/root/open5gs/build/tests/{cmdTest[0]}/{cmdTest[0]} -c {cmd["config"]} {cmdTest[1]}'
+                
+                if "module" not in cmdKeys:
+                    cmd["module"] = DEFAULT_MODULE
+                
+            
+            if "script" in cmd:
+                script = True
+                cmd["module"] = "script"
+                cmd["cmd"] = cmd["script"]
 
             if "timeout" not in cmdKeys:
                 cmd["timeout"] = TEST_COMMAND_TIMEOUT
-            if "module" not in cmdKeys:
-                cmd["module"] = DEFAULT_MODULE
             if "poll" not in cmdKeys:
                 cmd["poll"] = TEST_COMMAND_POLL_TIME
 
-            name = f"\n[blue bold]{cmd['where'].upper()}:[/] executing [dark_orange italic]{cmd['cmd']}[/]\n"
-            self.runAdHocCommand(cmd["where"], cmd["module"], cmd["cmd"], name, B=cmd['timeout'], P=cmd['poll'])
+            repeatRun = ("repeats" in cmdKeys)
+            if repeatRun: 
+                repeats = cmd["repeats"]
+                output_dir = resultsPath / "output"
+                if self.config["write_test_output"]: output_dir.mkdir(parents=True, exist_ok=True)
+            else: 
+                repeats = 1
             
+            name = f"\n[blue bold]{cmd['where'].upper()}:[/] executing [dark_orange italic]{cmd['cmd']}[/]\n"
+            
+            agg = {}
+            timestamps = {}
+            finished = True
+            try:
+                execScript = Path()
+                if repeatRun and script:
+                    scriptPath = Path(cmd["cmd"])
+                    with open(scriptPath, "r") as f:
+                        script = f.readlines()
+                        # empty script
+                        if len(script) == 0: continue
+
+                        if script[0][0] != "#" and scriptPath.suffix == ".sh":
+                            script.insert(0, "#!/bin/bash\n")
+
+                        script.insert(1, "start=$(date +%s.%N)\n")
+                        script.append("end=$(date +%s.%N)\n")
+                        script.append('echo "__TIME__=$(echo "$end - $start" | bc)"')
+
+                        execScript = self.cwd / Path("Managers/tmp") / scriptPath.name
+                        with open(execScript, "w") as modifiedScript:
+                            modifiedScript.writelines(script)
+                else:
+                    execScript = cmd["cmd"]
+
+                for r in range(repeats):
+                    if not script:
+                        res = self.runAdHocCommand(cmd["where"], cmd["module"], cmd["cmd"], name, B=cmd['timeout'], P=cmd['poll'], capture_output=repeatRun, text=repeatRun)
+                    else:
+                        res = self.runAdHocCommand(cmd["where"], cmd["module"], str(execScript), name, capture_output=repeatRun, text=repeatRun)
+                    
+                    if res.returncode != 0: 
+                        self.consolePrint("[red bold] Error [/] presented by command: " + cmd["cmd"])
+                        finished = False
+                        break
+
+                    clIdx = 0
+                    if repeatRun:
+                        stdout = res.stdout.split(" => ")
+                        for i in range(1, len(stdout)):
+                            vm = stdout[i-1][clIdx:].split(" | ")[0].split("\n")[-1]
+                            clIdx = stdout[i].rfind("}")
+
+                            if not script: 
+                                delta = loads(stdout[i][:clIdx+1])["delta"]
+                                h, m, s = delta.split(":")
+                            else: 
+                                time = loads(stdout[i][:clIdx+1])['stdout_lines'][-1]
+                                if "__TIME__" not in time: raise Exception("__TIME__ indicator was not found in script execution")
+                                h, m, s = 0,0,float(time.split('=')[-1])
+
+                            timeSec = timedelta(
+                                hours=int(h),
+                                minutes=int(m),
+                                seconds=float(s)
+                            ).total_seconds()
+                            agg[vm] = timeSec if (vm not in agg.keys()) else (agg[vm] + timeSec)
+
+                            cmdID = vm + "_" + cmd["cmd"]
+                            if vm not in timestamps.keys(): timestamps[vm] = {} 
+                            timestamps[vm]["command"] = cmdID
+                            timestamps[vm]["rep" + str(r)] = timeSec
+                        
+                        if self.config["write_test_output"]:
+                            with open(output_dir / "output.txt", "a") as f:
+                                f.write(res.stdout)
+            except Exception as e:
+                print(e)
+                sys.exit(1)
+            finally:
+                if script: Path(execScript).unlink(missing_ok=True)
+
+            if repeatRun and finished:
+                self.consoleRule(f"\n[bold]Executed [/]: [dark_orange italic]{cmd['cmd']}[/]")
+                self.consolePrint(f"[spring_green4]Repetitions [/]: {repeats}\nAverage execution times were:")
+                for vm in agg:
+                    self.consolePrint(f"[spring_green4] {vm} [/]: {(agg[vm]/repeats):.4f} seconds")
+
+                    for i in range(maxRepeats-repeats):
+                        timestamps[vm]["rep" + str(repeats+i)] = "NA"
+            
+            for time in timestamps:
+                timing.append(timestamps[time])
+
             if "logs" not in cmdKeys:
                 continue 
-                
-            self.getLogs(cmd["where"], cmd["logs"])
+            elif finished:
+                self.getLogs(cmd["where"], cmd["logs"])
         
+        with open(timingPath / "timing.csv", "a", newline='') as timingCSV:
+            fieldnames = []
+            fieldnames.append("command")
+
+            for i in range(maxRepeats):
+                fieldnames.append("rep" + str(i))
+                
+            writer = csv.DictWriter(timingCSV, fieldnames=fieldnames)
+            writer.writeheader()
+            writer.writerows(timing)
+
+        if self.config["capture_packets"]: 
+            pcap_dir = resultsPath / "pcap" 
+            pcap_dir.mkdir(parents=True, exist_ok=True)
+            
+            self.runAdHocCommand("all", 
+                            "ansible.builtin.shell", 
+                            r"kill -2 $(cat /tmp/tcpdump.pid) && sleep 2 && rm -f /tmp/tcpdump.pid", 
+                            "Kill tcpdump process", capture_output=True, text=True)
+
+            self.runAdHocCommand("all", 
+                            "ansible.builtin.fetch", 
+                            str(f"src=/tmp/capture.pcap dest={pcap_dir}/{{{{ inventory_hostname }}}}_capture.pcap flat=yes"), 
+                            "Fetch captured packets (.pcap)", capture_output=True, text=True)
+
         if self.config["copy_logs"]:
-            for func in VALID_FUNC:
-                self.fetchLogs(func)
+            logs_dir = resultsPath / "logs" 
+            logs_dir.mkdir(parents=True, exist_ok=True)
 
+            logsWhere = ""
+            for box in self.config["ogs_boxes"]:
+                logsWhere += box + ", "
+            logsWhere = logsWhere[:-2]
 
-    def fetchLogs(self, func):
+            res = self.runAdHocCommand(logsWhere, 
+                                "ansible.builtin.shell", 
+                                "find /root/open5gs/install/var/log/open5gs -maxdepth 1 -type f", 
+                                "", 
+                                capture_output=True, 
+                                text=True)
+
+            stdout = res.stdout.split("\n")
+            if "Using" in stdout[0]:
+                stdout = stdout[1:]
+            
+            self.consoleRule("Copying Open5GS Logs after testing")
+            box = ""
+            for i in range(len(stdout)):
+                if ">>" in stdout[i]:
+                    box = stdout[i].split(" | ")[0]
+                    self.consolePrint(f"Copying the logs from {box.upper()}")
+                # ignore non-log files
+                elif "log" not in stdout[i]:
+                    continue
+                else:
+                    func = stdout[i].split("/")[-1].split(".")[0]
+                    self.consolePrint(f"Copying {func} logs...")
+                    self.fetchLogs(func, logs_dir, box)
+            
+
+    def fetchLogs(self, func, logs_dir, where="all"):
         name=f"\nCopying [dark_orange italic]{func.upper()}[/] logs\n"
-        command=f"src=/root/open5gs/install/var/log/open5gs/{func}.log dest={{{{ playbook_dir }}}}/logs-{{{{ inventory_hostname }}}}/{func}.log"
-        self.runAdHocCommand("all", "ansible.builtin.fetch", command, name)
+        dest = logs_dir / f"{{{{ inventory_hostname }}}}/{func}.log"
+        command=f"src=/root/open5gs/install/var/log/open5gs/{func}.log dest={dest} flat=yes"
+        self.runAdHocCommand(where, "ansible.builtin.fetch", command, name, capture_output=True, text=True, ruleAndResult=False)
 
 
     def getLogs(self, where, components, lines=10):
@@ -157,15 +389,13 @@ class AnsibleManager(CommandLineManager):
                 f = func["func"]
             else:
                 f = func
-            if f in VALID_FUNC:
-                name=f"\nLast [plum1]{numLines}[/] lines of [dark_orange]{f.upper()}[/] logs from [blue bold]{where.upper()}:[/]"
-                command=f"tail -n {str(numLines)} /root/open5gs/install/var/log/open5gs/{f}.log"
-                self.runAdHocCommand(where, "ansible.builtin.shell", command, name, titleJustify="left")
-            else:
-                self.__raiseWrongConfig(f"{f} is not a valid Open5GS function")
+
+            name=f"\nLast [plum1]{numLines}[/] lines of [dark_orange]{f.upper()}[/] logs from [blue bold]{where.upper()}:[/]"
+            command=f"tail -n {str(numLines)} /root/open5gs/install/var/log/open5gs/{f}.log"
+            self.runAdHocCommand(where, "ansible.builtin.shell", command, name, titleJustify="left")
 
 
-    def runAdHocCommand(self, where, module, cmd, name, B=None, P=None, cwd=None, titleJustify="center"):
+    def runAdHocCommand(self, where, module, cmd, name, B=None, P=None, cwd=None, titleJustify="center", capture_output=False, text=False, become=False, ruleAndResult=True):
         command = ["ansible", where, "-m", module, "-a", cmd]
         if B and B != -1:
             command.append("-B")
@@ -175,38 +405,77 @@ class AnsibleManager(CommandLineManager):
             command.append(str(P))
         if not cwd:
             cwd = self.cwd / "ansible-setup"
-        command.append("-v")
-        self.runCommand(command, cwd=cwd, name=name, titleJustify=titleJustify)
+        if become:
+            command.append("-b")
+        #if self.config["verbose"]: command.append("-v")
+        return self.runCommand(command, cwd=cwd, name=name, titleJustify=titleJustify, capture_output=capture_output, text=text, ruleAndResult=ruleAndResult)
 
 
     def _writeVars(self):
-        res = self.runCommand(["git", "ls-remote", self.config["ogs"]["repo"]], noOutput=True) 
-        if res.returncode != 0:
-            self.__raiseWrongConfig("ogs_repo")
-        else:
-            print("Open5GS repo was found!")
-        
-        with open(self.cwd / "ansible-setup" / "roles" / "Open5GS Setup" / "vars" / "main.yml", "w") as f:
-            f.write(f"ogs_repo: {self.config['ogs']['repo']}\n")
-            f.write(f"ogs_version: {self.config['ogs']['version']}")
-        
-        for plmn in ["hplmn", "vplmn"]:
-            with open(self.cwd / "ansible-setup" / "inventory" / "group_vars" / f"{plmn}.yaml", "w") as f:
-                f.write(f"private_ip: {self.config[plmn]['private_ip']}\n")
-                
-                for c in [["config_path", "config_repo"], ["hosts_path", "hosts_repo"]]:
-                    if self.config[plmn][c[0]] != None:
-                        f.write(f"use_{c[0].split('_')[0]}_path: true\n")
-                        f.write(f"{c[0]}: {self.config[plmn][c[0]]}\n")
+        use_path = {"use_config_path": True, "use_hosts_path": True}
+        netemConfig = ""
+        for box in self.config["boxes"]:
+            with open(self.cwd / "ansible-setup" / "inventory" / "group_vars" / f"{box}.yaml", "w") as f:
+                for network in self.config["boxes"][box]["private_ip"]:
+                    for i in range(len(self.config["peering"])):
+                        if network == self.config["peering"][i]["name"]:
+                            self.config["boxes"][box]["private_ip"][network]["subnet_mask"] = self.config["peering"][i]["v4_subnet_mask"]
+                            break
+                privateIP = dump(self.config["boxes"][box]["private_ip"])
+
+                privateIP = "  " + privateIP
+                for i in range(len(privateIP)):
+                    if privateIP[i] == "\n":
+                        privateIP = privateIP[:i+1] + "  " + privateIP[i+1:]
+
+                ogs = True
+                if box not in self.config["ogs_boxes"]: 
+                    ogs = False
+                else:
+                    res = self.runCommand(["git", "ls-remote", self.config["boxes"][box]["ogs"]["repo"]], capture_output=True, text=True) 
+                    if res.returncode != 0:
+                        self.__raiseWrongConfig("ogs_repo")
                     else:
-                        res = self.runCommand(["git", "ls-remote", self.config[plmn][c[1]]], noOutput=True) 
-                        if res.returncode != 0:
-                            self.__raiseWrongConfig(plmn + c[1])
-                        else:
-                            print(plmn + c[1] + " was found!")
+                        print("Open5GS repo was found!")
+                    
+                    for c in [["config_path", "config_repo"], ["hosts_path", "hosts_repo"]]:
+                        if self.config["boxes"][box][c[0]] == "":
+                            res = self.runCommand(["git", "ls-remote", self.config["boxes"][box][c[1]]], capture_output=True, text=True) 
+                            if res.returncode != 0:
+                                self.__raiseWrongConfig(box + c[1])
+                            else:
+                                print(box + c[1] + " was found!")
+                            
+                            use_path[f"use_{c[0].split('_')[0]}_path"] = False
                 
-                        f.write(f"use_{c[0].split('_')[0]}_path: false\n")
-                        f.write(f"{c[1]}: {self.config[plmn][c[1]]}\n")
+                if self.config["location"].lower() == "local" and \
+                "use_netem" in self.config["boxes"][box]["vagrant"].keys() and \
+                self.config["boxes"][box]["vagrant"]["use_netem"]:
+                    netemConfig = dump(self.config["boxes"][box]["vagrant"]["netem"])
+                
+                groupvars = self.groupvarsTemplate.render(
+                    interface_num=len(self.config["boxes"][box]['private_ip']),
+                    private_ip=privateIP,
+                    mongodb=self.config["boxes"][box]["mongodb"],
+                    ogs=ogs,
+                    ogs_repo=self.config["boxes"][box]["ogs"]["repo"],
+                    ogs_version=self.config["boxes"][box]["ogs"]["version"],
+                    use_config_path=use_path["use_config_path"],
+                    config_repo=self.config["boxes"][box]["config_repo"],
+                    config_path=self.config["boxes"][box]["config_path"],
+                    use_hosts_path=use_path["use_hosts_path"],
+                    hosts_repo=self.config["boxes"][box]["hosts_repo"],
+                    hosts_path=self.config["boxes"][box]["hosts_path"],
+                    provisioning_script=self.config["boxes"][box]["provisioning_script"],
+                    use_netem=self.config["boxes"][box]["vagrant"]["use_netem"],
+                    netem=netemConfig,
+                    location=self.config["location"]
+                )
+
+                f.write(groupvars)
+
+        with open(self.cwd / "ansible-setup" / "roles" / "Open5GS Config" / "vars" / "main.yml", "w") as f:
+            f.write("provider: " + self.config["provider"] + "\n")
 
         '''
         When a Vultr machine is created its /etc/hosts file has this information:
@@ -216,27 +485,6 @@ class AnsibleManager(CommandLineManager):
         # a.) make changes to the master file in /etc/cloud/templates/hosts.debian.tmpl
         This var makes it so that the hosts file is written at that address
         '''
-        with open(self.cwd / "ansible-setup" / "roles" / "Open5GS Config" / "vars" / "main.yml", "w") as f:
-            with open(self.cwd / "ansible-setup" / "roles" / "Netplan Config" / "vars" / "main.yml", "w") as g:
-                print(self.config["provider"])
-                if self.config["provider"].lower() == "vultr":
-                    self.config["dest_netplan_path"] = "/etc/netplan/50-cloud-init.yaml"
-                    
-                    g.write("vpc_v4_subnet_mask: "  + f'\"{self.config["vultr"]["vpc"]["v4_subnet_mask"]}\"' + "\n")
-                else:
-                    self.config["dest_netplan_path"] = "/etc/netplan/50-vagrant.yaml"
-                    
-                    if "use_netem" in self.config["vagrant"].keys() and self.config["vagrant"]["use_netem"]:
-                        netemConfig = {"netem": self.config["vagrant"]["netem"]}
-                        f.write(dump(netemConfig))
-                        f.write("\n")
-                        f.write("use_netem: true\n")
-                    else:
-                        f.write("use_netem: false\n")
-
-                f.write("provider: " + self.config["provider"] + "\n")
-                
-                g.write("dest_netplan_path: "  + f'\"{self.config["dest_netplan_path"]}\"' + "\n")
                 
         if "create_services" not in self.config.keys():
             self.config["create_services"] = "true"
@@ -248,18 +496,22 @@ class AnsibleManager(CommandLineManager):
 
     def _writeInventory(self):
         if self.config["location"] == "cloud":
-            self.config["hplmn"]["ip"] = 22
-            self.config["hplmn"]["ip"] = 22
             user = "root"
         else:
             user = "vagrant"
+        
+        hosts = ""
+        for box in self.config["boxes"]:
+            host = self.hostTemplate.render(
+                name=box,
+                public_ip=self.config["boxes"][box]["public_ip"],
+                location=self.config["location"],
+                port=self.config["boxes"][box]["port"]
+            )
+            hosts += host
 
-        content = self.template.render(
-                hplmn_public_ip=self.config["hplmn"]["public_ip"],
-                hplmn_port=self.config["hplmn"]["port"],
-                vplmn_public_ip=self.config["vplmn"]["public_ip"],
-                vplmn_port=self.config["vplmn"]["port"],
-                provider=self.config["location"],
+        content = self.inventoryTemplate.render(
+                hosts=hosts,
                 ansible_user=user
                 )
 

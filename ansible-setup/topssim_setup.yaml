@@ -1,20 +1,22 @@
 - name: Wait for SSH
   hosts: all
-  tags: ssh_stage, install_stage, config_stage, testing_stage
+  tags: ssh_stage, install_stage, config_stage, testing_stage, network_stage
   gather_facts: false
   tasks:
     - name: Wait for SSH to become available
       ansible.builtin.wait_for_connection:
         timeout: 300
         sleep: 5
-
+        
 - name: Installation Stage
   hosts: all
   tags: install_stage
   any_errors_fatal: yes
   roles:
-    - MongoDB Install
-    - Open5GS Setup
+    - role: MongoDB Install
+      when: ogs or mongodb
+    - role: Open5GS Setup
+      when: ogs
   vars:
     specific_mongodb_version: "8.0.23"
     node_major: 20 # used for the installation of NodeJS
@@ -24,12 +26,13 @@
   tags: config_stage
   any_errors_fatal: yes
   roles:
-    - Open5GS Config
-    - role: Netplan Config
-      when: provider == "vultr"
+    - role: Open5GS Config
+      when: ogs
+    - role: Network Config
+      tags: network_stage
   vars:
-    enp8s0_block: |
-      - "{{ private_ip }}/{{ vpc_v4_subnet_mask }}"
+    interface_block: |
+      - "{{ private_ip }}/{{ subnet_mask }}"
     eth1_block: |
       - "{{ private_ip }}/24"
 
@@ -41,7 +44,17 @@
     - vars/vars.yaml
   roles: 
     - role: Create Services
-      when: create_services
+      when: create_services and ogs
+  become: yes
+
+- name: Provisioning Stage
+  hosts: all
+  tags: provisioning_stage
+  any_errors_fatal: yes
+  tasks:
+  roles: 
+    - role: Non-OGS Provisioning
+      when: not ogs
   become: yes
 
 #- name: Testing Stage

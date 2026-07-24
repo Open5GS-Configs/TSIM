@@ -75,12 +75,14 @@ def main():
         setup.printReadme()
     
     else:
+        runTest = False
+        
         if "testing_stage" in config["ansible_tags"]:
             runTest = True
             config["ansible_tags"].remove("testing_stage")
             config["ansible_tags"].append("ssh_stage")
         
-        setup.setup()
+        setup.setup(runTest)
 
     print(f"\n\nExecution Complete!\nTime Elapsed: {(time()-start_time):.2f} seconds")
 

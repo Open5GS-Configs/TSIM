@@ -1,3 +1,5 @@
+import jinja2
+
 from json import loads
 
 from .InfrastructureManager import InfrastructureManager
@@ -6,12 +8,43 @@ from .CommandLineManager import CommandLineManager
 
 VARS_PATH = "vultr-opentofu/terraform.tfvars"
 
+VARS = """vultr_api_key = "{{ vultr_api_key }}"
+user_ssh_key = "{{ user_ssh_key }}"
+ansible_ssh_key = "{{ ansible_ssh_key }}"
+boxes = {
+{{ boxes }}
+}
+peerings = { 
+{{ peerings }} 
+}
+"""
+
+PEERING = """   {{ name }} = {
+        "description": {{ description }}
+		"region": "{{ region }}",
+		"v4_subnet": "{{ v4_subnet }}",
+        "v4_subnet_mask": "{{ v4_subnet_mask }}"
+	},
+"""
+
+BOX = """   {{ name }} = {
+		"region": "{{ region }}",
+		"hostname": "{{ hostname }}",
+        "plan_id": "{{ plan_id }}"
+        "vpcs": [{{ vpcs }}]
+	},
+"""
+
 
 class OpenTofu(InfrastructureManager, CommandLineManager):
     def __init__(self, config, cwd):
         super().__init__(config)
 
         self.cwd = cwd
+        environment = jinja2.Environment()
+        self.varsTemplate = environment.from_string(VARS)
+        self.boxTemplate = environment.from_string(BOX)
+        self.peeringTemplate = environment.from_string(PEERING)
     
     def callInfManager(self):
         self._populateVars()
@@ -22,11 +55,11 @@ class OpenTofu(InfrastructureManager, CommandLineManager):
 
         res = self.runCommand(["tofu", f"-chdir={self.cwd / 'vultr-opentofu'}", "apply", "-auto-approve", "-show-sensitive", "-json-into=tofu_out.json"]) 
         if res.returncode != 0:
-            raise Exception("Error applying OpenTofu plan") 
-        
-        # self.runCommand(["tofu", f"-chdir={self.cwd / 'vultr-opentofu'}", "show", "-show-sensitive", "-json-into=tofu-apply.json"])
+            raise Exception("Error applying OpenTofu plan")
 
-        print("\n\nSuccesfully created HPLMN and VPLMN machines!\n\n")
+        print("\n\nSuccesfully created the following machines:\n")
+        for box in self.config["boxes"]: print(f"- {box.upper()}") 
+        print("\n\n")
 
         self.readIPs()
 
@@ -47,9 +80,8 @@ class OpenTofu(InfrastructureManager, CommandLineManager):
             # only parse last line where outputs are stores
             outJson = loads(outFile.split("\n")[-2])
 
-            self.config["hplmn"]["public_ip"] = outJson["outputs"]["hplm_ip"]["value"]
-            self.config["vplmn"]["public_ip"] = outJson["outputs"]["vplm_ip"]["value"]
-
+            for box in self.config["boxes"]:
+                self.config["boxes"][box]["public_ip"] = outJson["outputs"]["instance_ips"]["value"][box]
         
 
     def _populateVars(self):
@@ -57,21 +89,52 @@ class OpenTofu(InfrastructureManager, CommandLineManager):
 
         with open(self.cwd / VARS_PATH, 'w') as f:
             try:
-                f.write(f'vpc_v4_subnet_mask = \"{self.config["vultr"]["vpc"]["v4_subnet_mask"]}\"\n')
-                f.write(f'vpc_v4_subnet = \"{self.config["vultr"]["vpc"]["v4_subnet"]}\"\n') 
-                f.write(f'vpc_region = \"{self.config["vultr"]["vpc"]["region"]}\"\n') 
-            
-                f.write(f'vultr_api_key = \"{self.config["vultr"]["api_key"]}\"\n')
-                f.write(f'vultr_plan_id = \"{self.config["vultr"]["plan_id"]}\"\n')
-            
-                f.write(f'h_region = \"{self.config["vultr"]["hplmn_region"]}\"\n')
-                f.write(f'v_region = \"{self.config["vultr"]["vplmn_region"]}\"\n')
-                f.write(f'user_ssh_key = \"{self.config["user_ssh_key"]}\"\n')
-                f.write(f'ansible_ssh_key = \"{self.config["ansible_ssh_key"]}\"\n')
+                vpcNum = len(self.config["peering"])
+                boxes = list(self.config["boxes"].keys())
+                boxNum = len(boxes)
+                
+                peerings = "" 
+                for i in range(vpcNum):
+                    if "description" not in self.config["peering"][i]:
+                        self.config["peering"][i]["description"] = f'vpc for {self.config["peering"][i]["members"]}'
+                    self.config["peering"][i]["description"] = f'\"{self.config["peering"][i]["description"]}\"'
 
-                f.write('H_HOSTNAME = "HPLMNTEST"\n')
-                f.write('V_HOSTNAME = "VPLMNTEST"\n')
-            except AtributeError as e:
+                    peerings += self.peeringTemplate.render(
+                        description=self.config["peering"][i]["description"],
+                        name=self.config["peering"][i]["name"],
+                        v4_subnet=self.config["peering"][i]["v4_subnet"],
+                        v4_subnet_mask=self.config["peering"][i]["v4_subnet_mask"],
+                        region=self.config["peering"][i]["region"]
+                    )
+                    peerings += '\n'
+
+                instance = ""
+                for box in boxes:
+                    vpcs = ""
+                    for j in range(vpcNum):
+                        if box in self.config["peering"][j]["members"]:
+                            vpcs += f'\"{self.config["peering"][j]["name"]}\",'
+                    
+                    instance += self.boxTemplate.render(
+                        name=box,
+                        region=self.config["boxes"][box]["vultr"]["region"],
+                        hostname=self.config["boxes"][box]["hostname"],
+                        plan_id=self.config["boxes"][box]["vultr"]["plan_id"],
+                        vpcs=vpcs
+                    )
+
+                    instance += "\n"
+                
+                content = self.varsTemplate.render(
+                            peerings=peerings,
+                            vultr_api_key=self.config["vultr_api_key"],
+                            boxes=instance,
+                            user_ssh_key=self.config["user_ssh_key"],
+                            ansible_ssh_key=self.config["ansible_ssh_key"]
+                )
+
+                f.write(content)
+            except AttributeError as e:
                 print("Attribute Error while writing OpenTofu variables: " + e)
 
         print("Vars created successfully!")

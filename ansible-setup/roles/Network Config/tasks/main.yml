@@ -1,0 +1,92 @@
+---
+#- name: Remove hardcoded address line
+#  ansible.builtin.replace:
+#    path: "{{ dest_netplan_path }}"
+#    regexp: '^\s+- "[\d\.]+/[\d]+"$'
+#    replace: ''
+#  when: provider == "vultr" 
+
+- name: Remove cloud-init file
+  ansible.builtin.file:
+    path: /etc/netplan/50-cloud-init.yaml
+    state: absent
+
+- name: Copy file to disable cloud-init
+  ansible.builtin.copy:
+    src: files/99-disable-network-config.cfg
+    dest: /etc/cloud/cloud.cfg.d/99-disable-network-config.cfg
+    owner: root
+    mode: '0644'
+
+- name: Template netplan config
+  ansible.builtin.template:
+    src: templates/90-netplanconfig.j2
+    dest: /etc/netplan/90-netplanconfig.yaml
+    owner: root
+    mode: '0640'
+
+#- name: Set static ips for sepp link 
+#  ansible.builtin.blockinfile:
+#    path: "{{ dest_netplan_path }}"
+#    marker: "# {mark} ANSIBLE MANAGED BLOCK - {{ item.value.interface }}"
+#    insertafter: '      addresses:'
+#    block: "{{ item.value.ip }}/{{ item.value.subnet_mask }}"
+#  when: provider == "vultr" 
+#  loop: "{{ private_ip | dict2items }}"
+
+- name: Apply Netplan Config
+  ansible.builtin.command:
+    cmd: netplan apply
+  become: yes
+  when: provider == "vultr" 
+
+- name: Modify ufw rules (INPUT)
+  ansible.builtin.command:
+    cmd: ufw allow in on enp8s0
+  become: yes
+  when: provider == "vultr"
+
+- name: Modify ufw rules (OUTPUT)
+  ansible.builtin.command:
+    cmd: ufw allow out on enp8s0
+  become: yes
+  when: provider == "vultr"
+
+- name: Configure Network Emulator
+  ansible.builtin.shell: >
+    tc qdisc replace dev eth1 root netem \
+    {% if netem.delay is defined %} \ 
+    delay {{ netem.delay.time }} \
+      {% if netem.delay.jitter is defined %} \
+      {{ netem.delay.jitter }} \
+      {% endif %} \
+      {% if netem.delay.correlation is defined %} \
+      {{ netem.delay.correlation }} \
+      {% endif %} \
+    {% endif %} \
+    {% if netem.distribution is defined %} \
+    distribution {{ netem.distribution }} \
+    {% endif %} \
+    {% if netem.loss is defined %} \
+    loss {{ netem.loss }} \
+    {% endif %} \
+    {% if netem.corrupt is defined %} \
+    corrupt {{ netem.corrupt }} \
+    {% endif %} \
+    {% if netem.duplicate is defined %} \
+    duplicate {{ netem.duplicate }} \
+    {% endif %} \
+    {% if netem.rate is defined %} \
+    rate {{ netem.rate.rate }} \
+      {% if netem.rate.packetoverheard is defined %} \
+      {{ netem.rate.packetoverheard }} \
+      {% endif %} \
+      {% if netem.rate.cellsize is defined %} \
+      {{ netem.rate.cellsize }} \
+      {% endif %} \
+      {% if netem.rate.celloverhead is defined %} \
+      {{ netem.rate.celloverhead }} \
+      {% endif %} \
+    {% endif %} 
+  become: yes
+  when: ((provider == "vb") or (provider == "vmware")) and use_netem

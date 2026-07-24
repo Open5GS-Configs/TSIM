@@ -1,0 +1,10 @@
+network:
+  version: 2
+  ethernets:
+    enp1s0:
+      dhcp4: true
+{% for iface in private_ip.values() %}
+    {{ iface.interface }}:
+      addresses:
+        - {{ iface.ip }}/{{ iface.subnet_mask }}
+{% endfor %}

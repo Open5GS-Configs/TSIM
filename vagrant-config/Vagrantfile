@@ -5,7 +5,7 @@ require 'yaml'
 
 
 vars = YAML.load_file("vars.yaml")
-boxes = ["hplmn", "vplmn"]
+boxes = vars["boxes"].keys
 
 
 #inventory = {}
@@ -14,12 +14,11 @@ Vagrant.configure("2") do |config|
   config.vm.boot_timeout = 600
 
   config.vm.box = "bento/ubuntu-24.04"
-  config.disksize.size = "#{vars["box"]["disk"]}GB"
  
   config.vm.box_version = "202510.26.0"
   
-  user_ssh_key = vars["box"]["user_ssh_key"]
-  ansible_ssh_key = vars["box"]["ansible_ssh_key"]
+  user_ssh_key = vars["general"]["user_ssh_key"]
+  ansible_ssh_key = vars["general"]["ansible_ssh_key"]
  
   config.vm.provision "shell", inline: <<-SHELL
     cat > /home/vagrant/.ssh/authorized_keys <<EOF
@@ -32,27 +31,36 @@ Vagrant.configure("2") do |config|
     chmod 600 /home/vagrant/.ssh/authorized_keys
   SHELL
 
-  provider = vars["box"]["provider"]
+  provider = vars["general"]["provider"]
   config.vm.provision "shell", path: "install_python.sh"
 
-  N = boxes.size
-  (0...N).each do |machine_id|
-    config.vm.define "#{boxes[machine_id]}" do |machine|
-      machine.vm.hostname = vars[boxes[machine_id]]["hostname"]
-
+  boxes.each do |box|
+    config.vm.define "#{box}" do |machine|
+      machine.vm.hostname = vars["boxes"][box]["hostname"]
+      
+      machine.disksize.size = "#{vars["boxes"][box]["disk"]}GB"
+      
       if provider == "vb"
-        machine.vm.network "private_network",  
-          ip:  vars[boxes[machine_id]]["private_ip"],
-          virtualbox__intnet: "sepp-link"
-        
-        machine.vm.provider "virtualbox" do |v|
-          v.memory = vars["box"]["memory"]
-          v.cpus = vars["box"]["cpu"]
+        vars["boxes"][box]["private_ip"].each do |network, ip|
+          machine.vm.network "private_network",  
+            ip:  ip,
+            virtualbox__intnet: network
         end
-      elsif vars["provider"] == "vmware"
+
+        machine.vm.provider "virtualbox" do |v|
+          v.memory = vars["boxes"][box]["memory"]
+          v.cpus = vars["boxes"][box]["cpu"]
+        end
+
+      elsif provider == "vmware"
+        vars["boxes"][box]["private_ip"].each do |network, ip|
+          machine.vm.network "private_network",  
+            ip:  ip
+        end
+
         machine.vm.provider "vmware_desktop" do |v|
-          v.vmx["memsize"] = vars["box"]["memory"]
-          v.vmx["numvcpus"] = vars["box"]["cpu"]
+          v.vmx["memsize"] = vars["boxes"][box]["memory"]
+          v.vmx["numvcpus"] = vars["boxes"][box]["cpu"]
         end
       end
     end
@@ -70,21 +78,21 @@ end
 # via 127.0.0.1 to disable public access
 # config.vm.network "forwarded_port", guest: 80, host: 8080, host_ip: "127.0.0.1"
 
-#      inventory[boxes[machine_id]] = ["#{boxes[machine_id]}_node"]
-#      inventory["#{boxes[machine_id]}:vars"] = {"private_ip" => vars[boxes[machine_id]]["private_ip"],
-#                       "use_config_path" => vars[boxes[machine_id]]["use_config_path"],
-#                       "use_hosts_path" => vars[boxes[machine_id]]["use_hosts_path"]
+#      inventory[box] = ["#{box}_node"]
+#      inventory["#{box}:vars"] = {"private_ip" => vars[box]["private_ip"],
+#                       "use_config_path" => vars[box]["use_config_path"],
+#                       "use_hosts_path" => vars[box]["use_hosts_path"]
 #                        }
-#      if inventory["#{boxes[machine_id]}:vars"]["use_config_path"]
-#         inventory["#{boxes[machine_id]}:vars"]["config_path"] = vars[boxes[machine_id]]["config_path"]
+#      if inventory["#{box}:vars"]["use_config_path"]
+#         inventory["#{box}:vars"]["config_path"] = vars[box]["config_path"]
 #      else
-#         inventory["#{boxes[machine_id]}:vars"]["config_repo"] = vars[boxes[machine_id]]["config_repo"]
+#         inventory["#{box}:vars"]["config_repo"] = vars[box]["config_repo"]
 #      end
 #
-#      if inventory["#{boxes[machine_id]}:vars"]["use_hosts_path"]
-#         inventory["#{boxes[machine_id]}:vars"]["hosts_path"] = vars[boxes[machine_id]]["hosts_path"]
+#      if inventory["#{box}:vars"]["use_hosts_path"]
+#         inventory["#{box}:vars"]["hosts_path"] = vars[box]["hosts_path"]
 #      else
-#         inventory["#{boxes[machine_id]}:vars"]["hosts_repo"] = vars[boxes[machine_id]]["hosts_repo"]
+#         inventory["#{box}:vars"]["hosts_repo"] = vars[box]["hosts_repo"]
 #      end
 
  

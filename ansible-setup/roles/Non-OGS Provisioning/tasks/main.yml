@@ -1,0 +1,9 @@
+---
+# tasks file for Non-OGS Provisioning
+- name: Run provisioning script
+  ansible.builtin.script: "{{ provisioning_script }}"
+  register: provisioning_output
+
+- name: Print provisioning script output
+  ansible.builtin.debug:
+    var: provisioning_output

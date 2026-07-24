@@ -1,5 +1,0 @@
-private_ip: 10.10.0.4
-use_config_path: false
-config_repo: https://github.com/Open5GS-Configs/VPLMN-Config
-use_hosts_path: true
-hosts_path: /home/agustin/hosts/vplmn/hosts

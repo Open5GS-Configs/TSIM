@@ -9,6 +9,8 @@ from textual.message import Message
 from textual import work
 
 
+OPEN5GS_FUNC = ["amf", "mme", "pcf", "sepp1old", "sepp2", "smf", "udm", "ausf", "nrf", "pcrf", "sepp1", "sgwc", "udr", "bsf", "hss", "nssf", "scp", "sgwu", "upf"]
+
 
 class Main_Output(RichLog):
 
@@ -41,7 +43,7 @@ class TSim(App):
         self.config = config
         self.runCmd = run
         self.cwd = cwd
-        self.f = open("tui/logs.txt", "w")
+        self.f = open("/home/agustin/5G_Setup/tui/logs.txt", "w")
 
         self.arguments = sys.argv
         if "--tui" in self.arguments: self.arguments.remove("--tui")
@@ -55,7 +57,7 @@ class TSim(App):
 
         # extracts components to be logged during testing from run file
         for i in range(len(self.runCmd)):
-            if isinstance(self.runCmd[i], dict) and "logs" in self.runCmd[i].keys():
+            if isinstance(self.runCmd[i], dict) and "tui" in self.runCmd[i].keys():
                 self.logs = self.runCmd[i]["logs"]
                 self.numLogs = len(self.logs)
 
@@ -112,7 +114,10 @@ class TSim(App):
 
     @work(thread=True)
     def stream_logs(self, where, function, id):
-        SCRIPT=f"sudo journalctl -fu open5gs-{function}d --no-pager"
+        if function in OPEN5GS_FUNC:
+            function = f"open5gs-{function}d"
+        
+        SCRIPT=f"sudo journalctl -fu {function} --no-pager"
         self.f.write(str(self.config[where].keys()) + "\n")
         HOST=self.config[where]["public_ip"]
         USER="root" if self.config["location"] == "cloud" else "vagrant"
