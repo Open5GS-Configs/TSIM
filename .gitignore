@@ -231,9 +231,14 @@ config_vultr.yaml
 vagrant-config/.vagrant
 config_vultr.yaml
 .vagrant
+ansible-setup/inventory/hosts.yaml
+configs/
+hosts/
+ansible-setup/inventory/hosts.yaml
 logs.txt
 results/*
-ansible-setup/vars/vars.yaml
-ansible-setup/inventory/*
+ansible-setup/vars/*
+ansible-setup/inventory/hosts.yaml
+ansible-setup/inventory/group_vars/*
 ansible-setup/ansible.cfg.save
 vagrant-config/vars.yaml

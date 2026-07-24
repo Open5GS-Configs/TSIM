@@ -50,7 +50,9 @@ class Vagrant(InfrastructureManager, CommandLineManager):
         print("\n\nSuccesfully created the following machines:\n")
         for box in self.config["boxes"]: print(f"- {box.upper()}") 
         print("\n\n")
-
+        
+        self.readIPs()
+        
         print("\n\n Vagrant completed succesfully!")
 
 
@@ -103,11 +105,11 @@ class Vagrant(InfrastructureManager, CommandLineManager):
 
 
     def readIPs(self):
-        res = self.runCommand(["vagrant", "ssh-config", "--machine-readable"], noOutput=True,  cwd=(self.cwd / "vagrant-config"))
+        res = self.runCommand(["vagrant", "ssh-config", "--machine-readable"], capture_output=True, text=True, cwd=(self.cwd / "vagrant-config"))
         if res.returncode != 0:
             raise Exception("Error collecting VM IPs")
 
-        plmn = ""
+        box = ""
         ip = ""
         port = ""
 
@@ -117,12 +119,12 @@ class Vagrant(InfrastructureManager, CommandLineManager):
                 for c in data[3].split("\\n"):
                     sshConfig = c.split()
                     if "Host" in sshConfig:
-                        plmn = sshConfig[1]
+                        box = sshConfig[1]
                     if "HostName" in sshConfig:
                         ip = sshConfig[1]
                     if "Port" in sshConfig:
                         port = sshConfig[1]
-                self.config[plmn]["public_ip"] = ip
-                self.config[plmn]["port"] = port
-                print(f"SSH Config: {plmn} {ip} {port}")
+                self.config["boxes"][box]["public_ip"] = ip
+                self.config["boxes"][box]["port"] = port
+                print(f"SSH Config: {box} {ip} {port}")
 

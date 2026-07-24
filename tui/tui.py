@@ -2,8 +2,10 @@ import asyncio
 import subprocess
 import sys
 
-from textual.app import App, ComposeResult
-from textual.widgets import Header, Footer, Button, RichLog, Static
+from pathlib import Path
+
+from textual.app import App
+from textual.widgets import Header, Footer, Button, Static, RichLog
 from textual.containers import VerticalScroll, Vertical
 from textual.message import Message
 from textual import work
@@ -15,6 +17,8 @@ OPEN5GS_FUNC = ["amf", "mme", "pcf", "sepp2", "smf", "udm", "ausf", "nrf", "pcrf
 class Main_Output(RichLog):
 
     def __init__(self) -> None:
+        self.cwd = Path.cwd()
+
         super().__init__(
             id="mainOutput",
             highlight=True,
@@ -43,7 +47,7 @@ class TSim(App):
         self.config = config
         self.runCmd = run
         self.cwd = cwd
-        self.f = open("/home/agustin/5G_Setup/tui/logs.txt", "w")
+        self.f = open(self.cwd / Path("tui/logs.txt"), "w")
 
         self.arguments = sys.argv
         if "--tui" in self.arguments: self.arguments.remove("--tui")
@@ -78,7 +82,7 @@ class TSim(App):
             childLog.styles.height = f"{100/self.numLogs}%"
     
     
-    def compose(self) -> ComposeResult: 
+    def compose(self): 
         yield Main_Output()
 
         with Vertical(classes="right-column"):
