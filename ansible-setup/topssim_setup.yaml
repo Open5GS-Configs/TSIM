@@ -53,8 +53,7 @@
   any_errors_fatal: yes
   tasks:
   roles: 
-    - role: Non-OGS Provisioning
-      when: not ogs
+    - role: Extra Provisioning
   become: yes
 
 #- name: Testing Stage

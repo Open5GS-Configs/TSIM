@@ -58,7 +58,7 @@ class setupTOPSSIM(CommandLineManager):
 
         # now the VMs have been created and the IPs to ssh into the machines are stored within config
         self.consoleRule("Start Ansible Configuration")
-        self.callAnsible(self.config["ansible_tags"])
+        self.callAnsible(self.config["ansible_tags"], self.config["skip_tags"])
 
         if runTest or "ansible_tags" not in self.config.keys() or "testing_stage" in self.config["ansible_tags"]:
             self.consoleRule("Run File Execution")
@@ -80,11 +80,11 @@ class setupTOPSSIM(CommandLineManager):
         return False
 
 
-    def callAnsible(self, tags, writeInventory=True):
+    def callAnsible(self, tags, skip_tags, writeInventory=True):
         self.ansibleManager.configure(writeInventory)
         self.consoleRule(f"Start Ansible Setup in VMs")
          
-        self.ansibleManager.setup(tags)
+        self.ansibleManager.setup(tags, skip_tags)
 
 
     def getVultrPlans(self, apiKey):
@@ -271,6 +271,16 @@ class setupTOPSSIM(CommandLineManager):
 
             if "mongodb" not in self.config["boxes"][box]:
                 self.config["boxes"][box]["mongodb"] = False
+        
+            if "copy" not in self.config["boxes"][box]:
+                self.config["copy"] = []
+        
+            if "provisioning_script" not in self.config["boxes"][box]:
+                self.config["boxes"][box]["provisioning_script"] = ""
+                self.config["boxes"][box]["use_provisioning_script"] = False
+            else:
+                self.config["boxes"][box]["use_provisioning_script"] = True
+
 
         if "create_services" not in configKeys:
             self.config["create_services"] = False
@@ -289,6 +299,9 @@ class setupTOPSSIM(CommandLineManager):
         
         if "ansible_tags" not in configKeys:
             self.config["ansible_tags"] = ""
+        
+        if "skip_tags" not in configKeys:
+            self.config["skip_tags"] = ""
 
         return True
 

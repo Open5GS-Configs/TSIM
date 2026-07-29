@@ -28,6 +28,11 @@ boxes:
   hplmn:
       config: plmn # include the configuration named plmn defined below
       
+      copy: # a list of paths to files or directories meant to be copied to the machine
+        - /path/to/directory/or/file
+        - src: /path/to/src/directory/or/file
+          dest: /path/to/src/directory/or/file
+
       config_repo: <HPLMN Config repo> 
       hosts_path: <Path to Hosts used in HPLMN>
       # defines the private IPs for every interface this machine is included in
@@ -131,6 +136,9 @@ configs:
           celloverhead: 5
 ##############################################################
 ```
+The copy list provides defaults to /root/ when a destiny path is not specified. The rules for directories when copying files with Ansible change where the directory is copied to. 
+"src: If path is a directory, it is copied recursively. In this case, if path ends with /, only inside contents of that directory are copied to destination. Otherwise, if it does not end with /, the directory itself with all contents is copied. This behavior is similar to the rsync command line tool."
+More information [here](https://docs.ansible.com/projects/ansible/latest/collections/ansible/builtin/copy_module.html)
 
 For **Vultr** VMs, it is necessary to add the API key as an 
 environment variable (VULTR_API_KEY), which will be read by the Python script. 
@@ -226,6 +234,9 @@ It is also useful to know that OpenTofu, Vagrant, and Ansible provide CLI tools.
 - `ansible-inventory --list-hosts` to see the hosts    
 - `ansible-galaxy role list` to see the installed roles  
 - `ansible-playbook -i "<IP address>," topssim_setup.yaml -e "ogs=true, ... <other variables>" --tags "install_stage, <any tags>"` to run a part of the playbook on any available machine 
+
+- To see all of the available tags you can run the following command:
+`ansible-playbook topssim_setup.yaml --list-tags`
 
 - To add a SSH key passphrase to be recognized by Ansible when creating the SSH connection to the hosts:    
 Start SSH Agent:     

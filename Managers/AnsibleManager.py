@@ -37,6 +37,8 @@ HOST = """    {{ name }}:
 GROUP_VARS = """interface_num: {{ interface_num }}
 private_ip: 
 {{ private_ip }}
+extra_files:
+{{ copy }}
 mongodb: {{ mongodb }}
 ogs: {{ ogs }}
 {% if ogs %}
@@ -54,7 +56,9 @@ hosts_path: {{ hosts_path }}
 {% else %}
 hosts_repo: {{ hosts_repo }}
 {% endif %}
-{% else %}
+{% endif %}
+use_provisioning_script: {{ use_provisioning_script }}
+{% if use_provisioning_script %}
 provisioning_script: {{ provisioning_script }}
 {% endif %}
 {% if location == "local" %}
@@ -128,7 +132,7 @@ class AnsibleManager(CommandLineManager):
         self._writeVars()
 
 
-    def setup(self, tags):
+    def setup(self, tags, skip_tags):
         try:
             command = ["ansible-playbook", "topssim_setup.yaml"]
 
@@ -136,6 +140,10 @@ class AnsibleManager(CommandLineManager):
             if tags and len(tags) != 0:
                 command.append("--tags")
                 command.append(tags[0].replace(" ", ", "))
+            if skip_tags and len(skip_tags) != 0:
+                command.append("--skip-tags")
+                command.append(skip_tags[0].replace(" ", ", "))
+                
             command.append(f'--private-key={self.config["ansible_priv_ssh_key"]}')
             res = self.runCommand(command, cwd=(self.cwd / "ansible-setup"))
             if res.returncode != 0:
@@ -417,8 +425,31 @@ class AnsibleManager(CommandLineManager):
     def _writeVars(self):
         use_path = {"use_config_path": True, "use_hosts_path": True}
         netemConfig = ""
+
+        group_vars_path = Path(self.cwd / "ansible-setup" / "inventory" / "group_vars")
+
+        for item in group_vars_path.iterdir():
+            try:
+                if item.is_file() or item.is_symlink():
+                    item.unlink() 
+            except Exception as e:
+                print(f"Failed to delete {item}. Reason: {e}")
+
         for box in self.config["boxes"]:
-            with open(self.cwd / "ansible-setup" / "inventory" / "group_vars" / f"{box}.yaml", "w") as f:
+            with open(group_vars_path / f"{box}.yaml", "w") as f:
+                for path in self.config["boxes"][box]["copy"]:
+                    if isinstance(path, str):
+                        self.config["boxes"][box]["copy"] = {}
+                        self.config["boxes"][box]["copy"]["src"] = path
+                        self.config["boxes"][box]["copy"]["dest"] = "/root/"
+
+                copy = dump(self.config["boxes"][box]["copy"])
+                
+                copy = "  " + copy
+                for i in range(len(copy)):
+                    if copy[i] == "\n":
+                        copy = copy[:i+1] + "  " + copy[i+1:]
+                
                 for network in self.config["boxes"][box]["private_ip"]:
                     for i in range(len(self.config["peering"])):
                         if network == self.config["peering"][i]["name"]:
@@ -459,6 +490,7 @@ class AnsibleManager(CommandLineManager):
                 groupvars = self.groupvarsTemplate.render(
                     interface_num=len(self.config["boxes"][box]['private_ip']),
                     private_ip=privateIP,
+                    copy=copy,
                     mongodb=self.config["boxes"][box]["mongodb"],
                     ogs=ogs,
                     ogs_repo=self.config["boxes"][box]["ogs"]["repo"],
@@ -469,6 +501,7 @@ class AnsibleManager(CommandLineManager):
                     use_hosts_path=use_path["use_hosts_path"],
                     hosts_repo=self.config["boxes"][box]["hosts_repo"],
                     hosts_path=self.config["boxes"][box]["hosts_path"],
+                    use_provisioning_script=self.config["boxes"][box]["use_provisioning_script"],
                     provisioning_script=self.config["boxes"][box]["provisioning_script"],
                     use_netem=self.config["boxes"][box]["vagrant"]["use_netem"],
                     netem=netemConfig,
