@@ -140,6 +140,8 @@ The copy list provides defaults to /root/ when a destiny path is not specified. 
 "src: If path is a directory, it is copied recursively. In this case, if path ends with /, only inside contents of that directory are copied to destination. Otherwise, if it does not end with /, the directory itself with all contents is copied. This behavior is similar to the rsync command line tool."
 More information [here](https://docs.ansible.com/projects/ansible/latest/collections/ansible/builtin/copy_module.html)
 
+A provisioning script is optional for both Open5GS and non-Open5GS machines.
+
 For **Vultr** VMs, it is necessary to add the API key as an 
 environment variable (VULTR_API_KEY), which will be read by the Python script. 
 
@@ -236,7 +238,7 @@ It is also useful to know that OpenTofu, Vagrant, and Ansible provide CLI tools.
 - `ansible-playbook -i "<IP address>," topssim_setup.yaml -e "ogs=true, ... <other variables>" --tags "install_stage, <any tags>"` to run a part of the playbook on any available machine 
 
 - To see all of the available tags you can run the following command:
-`ansible-playbook topssim_setup.yaml --list-tags`
+`ansible-playbook ansible-setup/topssim_setup.yaml --list-tags`
 
 - To add a SSH key passphrase to be recognized by Ansible when creating the SSH connection to the hosts:    
 Start SSH Agent:     

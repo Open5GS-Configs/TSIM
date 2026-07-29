@@ -172,12 +172,13 @@ class AnsibleManager(CommandLineManager):
 
         if self.config["capture_packets"]: 
             pcapWhere = ""
-            if "pcap" not in self.run:
+            for el in self.run:
+                if "pcap" in el:
+                    for box in el["pcap"]:
+                        pcapWhere += box + ", "
+                        pcapWhere = pcapWhere[:-2]
+            if pcapWhere == "":
                 pcapWhere = "all"
-            else:
-                for box in self.run["pcap"]:
-                    pcapWhere += box + ", "
-                pcapWhere = pcapWhere[:-2]
             
             self.runAdHocCommand(pcapWhere,
                                              "ansible.builtin.shell", 
@@ -339,12 +340,12 @@ class AnsibleManager(CommandLineManager):
             pcap_dir = resultsPath / "pcap" 
             pcap_dir.mkdir(parents=True, exist_ok=True)
             
-            self.runAdHocCommand("all", 
+            self.runAdHocCommand(pcapWhere, 
                             "ansible.builtin.shell", 
                             r"kill -2 $(cat /tmp/tcpdump.pid) && sleep 2 && rm -f /tmp/tcpdump.pid", 
                             "Kill tcpdump process", capture_output=True, text=True)
 
-            self.runAdHocCommand("all", 
+            self.runAdHocCommand(pcapWhere, 
                             "ansible.builtin.fetch", 
                             str(f"src=/tmp/capture.pcap dest={pcap_dir}/{{{{ inventory_hostname }}}}_capture.pcap flat=yes"), 
                             "Fetch captured packets (.pcap)", capture_output=True, text=True)
