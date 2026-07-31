@@ -58,6 +58,7 @@ class setupTOPSSIM(CommandLineManager):
 
         # now the VMs have been created and the IPs to ssh into the machines are stored within config
         self.consoleRule("Start Ansible Configuration")
+        
         self.callAnsible(self.config["ansible_tags"], self.config["skip_tags"])
 
         if runTest or "ansible_tags" not in self.config.keys() or "testing_stage" in self.config["ansible_tags"]:

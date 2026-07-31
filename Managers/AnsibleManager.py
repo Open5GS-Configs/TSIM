@@ -58,9 +58,7 @@ hosts_repo: {{ hosts_repo }}
 {% endif %}
 {% endif %}
 use_provisioning_script: {{ use_provisioning_script }}
-{% if use_provisioning_script %}
 provisioning_script: {{ provisioning_script }}
-{% endif %}
 {% if location == "local" %}
 use_netem: {{ use_netem }}
 {% if use_netem %}
@@ -148,6 +146,7 @@ class AnsibleManager(CommandLineManager):
             res = self.runCommand(command, cwd=(self.cwd / "ansible-setup"))
             if res.returncode != 0:
                 raise Exception("Ansible execution exited incorrectly!")
+                self.config["ansible_execution"] = False
         except Exception as e:
             import traceback
             traceback.print_exc()
@@ -161,6 +160,11 @@ class AnsibleManager(CommandLineManager):
         - pcap
         - timings
         """
+        
+        if not self.config["ansible_execution"]:
+            print("Ansible execution failed. Will not proceed with Run file!")
+            return
+        
         now = datetime.now().strftime("%Y_%m_%d_%H_%M_%S")
         if len(self.run) > 0: 
             resultsPath = self.cwd / "results" / f"results-{now}" 

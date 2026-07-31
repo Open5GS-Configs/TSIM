@@ -26,16 +26,22 @@ def main():
         setup.printVMIPs()
 
     elif "tui" in configKeys:
+        config["ansible_execution"] = True
+
         app = TSim(config, run, cwd, setup)
         app.run()
 
     elif "restart" in configKeys:
+        config["ansible_execution"] = True
+
         setup.destroy()
         setup.setup()
         setup.ansibleManager.runFileCommands()
         setup.printVMIPs()
 
     elif "ansible" in configKeys:
+        config["ansible_execution"] = True
+        
         runTest = False
         if "testing_stage" in config["ansible_tags"]:
             runTest = True
@@ -47,6 +53,8 @@ def main():
         setup.printVMIPs()    
 
     elif "test" in configKeys:
+        config["ansible_execution"] = True
+        
         setup.ansibleManager.runFileCommands()
         setup.printVMIPs()
 
