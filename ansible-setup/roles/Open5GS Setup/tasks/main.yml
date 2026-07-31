@@ -79,7 +79,7 @@
   ansible.builtin.file:
     path: /root/open5gs
     state: absent
-  tags: ['install_ogs']
+  tags: ['install_ogs', 'build_ogs']
 
 - name: Clone OGS Repo
   ansible.builtin.git: 
@@ -88,7 +88,7 @@
     single_branch: yes
     version: "{{ ogs_version }}"
   become: yes
-  tags: ['install_ogs']
+  tags: ['install_ogs', 'build_ogs']
 
 - name: Meson Build Open5GS
   ansible.builtin.command: 

@@ -438,12 +438,13 @@ class AnsibleManager(CommandLineManager):
 
         for box in self.config["boxes"]:
             with open(group_vars_path / f"{box}.yaml", "w") as f:
-                for path in self.config["boxes"][box]["copy"]:
-                    if isinstance(path, str):
-                        self.config["boxes"][box]["copy"] = {}
-                        self.config["boxes"][box]["copy"]["src"] = path
-                        self.config["boxes"][box]["copy"]["dest"] = "/root/"
-
+                for i in range(len(self.config["boxes"][box]["copy"])):
+                    if isinstance(self.config["boxes"][box]["copy"][i], str):
+                        path = self.config["boxes"][box]["copy"][i]
+                        self.config["boxes"][box]["copy"][i] = {}
+                        self.config["boxes"][box]["copy"][i]["src"] = path
+                        self.config["boxes"][box]["copy"][i]["dest"] = "/root/"
+                        
                 copy = dump(self.config["boxes"][box]["copy"])
                 
                 copy = "  " + copy

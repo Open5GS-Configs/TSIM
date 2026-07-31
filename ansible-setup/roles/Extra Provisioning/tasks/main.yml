@@ -1,5 +1,15 @@
 ---
-# tasks file for Non-OGS Provisioning
+# tasks file for extra Provisioning
+
+- name: Copy extra files
+  ansible.builtin.copy:
+    src: "{{ item.src }}"
+    dest: "{{ item.dest }}"
+    mode: '0644'
+    directory_mode: '0755'
+  loop: "{{ extra_files }}"
+  tags: ['copy_stage']
+  
 - name: Run provisioning script
   ansible.builtin.script: "{{ provisioning_script }}"
   register: provisioning_output
@@ -11,12 +21,3 @@
     var: provisioning_output
   when: use_provisioning_script 
   tags: ['provisioning_script']
-
-- name: Copy extra files
-  ansible.builtin.copy:
-    src: "{{ item.src }}"
-    dest: "{{ item.dest }}"
-    mode: '0644'
-    directory_mode: '0755'
-  loop: "{{ extra_files }}"
-  tags: ['copy_stage']
