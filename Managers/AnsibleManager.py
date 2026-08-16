@@ -133,21 +133,21 @@ class AnsibleManager(CommandLineManager):
     def setup(self, tags, skip_tags):
         try:
             command = ["ansible-playbook", "topssim_setup.yaml"]
-
             #if self.config["verbose"]: command.append("-v")
             if tags and len(tags) != 0:
                 command.append("--tags")
                 command.append(tags[0].replace(" ", ", "))
-            if skip_tags and len(skip_tags) != 0:
+            if len(skip_tags) != 0:
                 command.append("--skip-tags")
                 command.append(skip_tags[0].replace(" ", ", "))
-                
+
             command.append(f'--private-key={self.config["ansible_priv_ssh_key"]}')
+            
             res = self.runCommand(command, cwd=(self.cwd / "ansible-setup"))
             if res.returncode != 0:
                 raise Exception("Ansible execution exited incorrectly!")
-                self.config["ansible_execution"] = False
         except Exception as e:
+            self.config["ansible_execution"] = False
             import traceback
             traceback.print_exc()
 

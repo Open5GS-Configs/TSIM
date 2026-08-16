@@ -84,6 +84,7 @@ def main():
     
     else:
         runTest = True
+        config["ansible_execution"] = True
         
         if "testing_stage" in config["ansible_tags"]:
             config["ansible_tags"].remove("testing_stage")

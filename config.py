@@ -102,6 +102,7 @@ class Config(CommandLineManager):
             "lines": ("lines",),
             "vultr_api_key": ("vultr", "api_key"),
             "ansible_tags": ("ansible_tags",),
+            "skip_tags": ("skip_tags",),
         }
 
         for arg_name, path in overrides.items():

@@ -142,6 +142,8 @@ More information [here](https://docs.ansible.com/projects/ansible/latest/collect
 
 A provisioning script is optional for both Open5GS and non-Open5GS machines.
 
+The copy list and provisioning script are part of a "extra provisioning" role, which is run immediately after SSH connection is completed with the machines. If any scripts need to be run after Open5GS has been install or configured, for example, it can be done through the run file.
+
 For **Vultr** VMs, it is necessary to add the API key as an 
 environment variable (VULTR_API_KEY), which will be read by the Python script. 
 
@@ -250,8 +252,7 @@ And add private key:
 2. OpenTofu:   
 - `tofu show`    
 - `tofu state list`    
-- `tofu state show vultr_vpc.sepp-link` (the address of the instances lives in _vultr-opentofu/vultr_resources.tf_)   
-
+- `tofu state show vultr_vpc.sepp-link` (the address of the instances lives in _vultr-opentofu/vultr_resources.tf_)
 
 3. Vagrant:
 - `vagrant up`

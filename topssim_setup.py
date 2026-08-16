@@ -61,7 +61,7 @@ class setupTOPSSIM(CommandLineManager):
         
         self.callAnsible(self.config["ansible_tags"], self.config["skip_tags"])
 
-        if runTest or "ansible_tags" not in self.config.keys() or "testing_stage" in self.config["ansible_tags"]:
+        if (runTest or "ansible_tags" not in self.config.keys() or "testing_stage" in self.config["ansible_tags"]) and self.config["ansible_execution"]:
             self.consoleRule("Run File Execution")
             self.ansibleManager.runFileCommands()
         
@@ -178,7 +178,8 @@ class setupTOPSSIM(CommandLineManager):
             
             if "ogs" in self.config["boxes"][box].keys(): 
                 self.config["ogs_boxes"].append(box)
-                self.config["boxes"][box]["provisioning_script"] = ""
+            else:
+                self.config["boxes"][box]["ogs"] = {}
         
         self.config.pop("config", None)
         self.config["provider"] = self.config["provider"].lower()
@@ -232,9 +233,6 @@ class setupTOPSSIM(CommandLineManager):
 
         for box in self.config["boxes"]:
             self.config["boxes"][box]["hostname"] = box.upper() + "-TEST"
-            
-            if box not in self.config["ogs_boxes"]: 
-                self.config["boxes"][box]["ogs"] = {}
 
             boxKeys = self.config["boxes"][box].keys()
             
@@ -274,7 +272,7 @@ class setupTOPSSIM(CommandLineManager):
                 self.config["boxes"][box]["mongodb"] = False
         
             if "copy" not in self.config["boxes"][box]:
-                self.config["copy"] = []
+                self.config["boxes"][box]["copy"] = []
         
             if "provisioning_script" not in self.config["boxes"][box]:
                 self.config["boxes"][box]["provisioning_script"] = ""
@@ -302,7 +300,7 @@ class setupTOPSSIM(CommandLineManager):
             self.config["ansible_tags"] = ""
         
         if "skip_tags" not in configKeys:
-            self.config["skip_tags"] = ""
+            self.config["skip_tags"] = []
 
         return True
 
