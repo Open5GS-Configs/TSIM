@@ -270,3 +270,27 @@ If the instance deleted is still there, you can remove it with: `tofu state rm v
 
 2. Vagrant
 If a machine times out during boot, especially when being created, it can signify a problem in the communication to that machine. Sometimes the box has been created but it does not connect. The best way to deal with this is to run the -restart command, which destroys and recreates the machines. 
+
+### Follow up
+
+1. Implement WireGuard connections for Vultr between VMs of different regions
+
+2. A VM/container per function
+
+3. Improvements to TUI (stream pcap and add more interactivity)
+
+4. Add VM providers (especially cloud providers like Azure and AWS)
+
+5. Testpyinfra (possibly replacement for Ansible)
+
+6. Configure web UI as an option
+
+7. Add Jinja templating to automatically create config files and hosts file
+
+8. Network interface discovery for arbitrary number of network interfaces
+
+9. Save profiles (to run main.py -profile SCO)
+
+10. Add functionality to run local commands in run file (where: here, for example)
+
+11. Add list of package to be installed when installing open5gs, mongodb, etc.
